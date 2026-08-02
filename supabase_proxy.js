@@ -165,9 +165,18 @@ window.fetch = async function(resource, config) {
                 }
 
                 if (type === 'breaks') {
-                    const { data } = await supabaseClient.from('Break').select('*').eq('farmId', farmId);
+                    let allBreaks = [];
+                    let from = 0;
+                    const step = 1000;
+                    while (true) {
+                        const { data, error } = await supabaseClient.from('Break').select('*').eq('farmId', farmId).range(from, from + step - 1);
+                        if (error || !data || data.length === 0) break;
+                        allBreaks = allBreaks.concat(data);
+                        if (data.length < step) break;
+                        from += step;
+                    }
                     return new Response(JSON.stringify({
-                        breaks: data?.map(b => {
+                        breaks: allBreaks.map(b => {
                             let parsedVertices = [];
                             let extraMeta = {};
                             if (b.vertices) {
