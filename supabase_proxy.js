@@ -7,7 +7,12 @@ window.fetch = async function(resource, config) {
     if (typeof resource === 'string' && resource.includes('controlpanel-alpha.vercel.app')) {
         const url = new URL(resource);
         const path = url.pathname;
-        const type = url.searchParams.get('type');
+        let type = url.searchParams.get('type');
+        let body = {};
+        if (config?.body && typeof config.body === 'string') {
+            try { body = JSON.parse(config.body); } catch(e){}
+            if (!type) type = body.type;
+        }
         const farmId = url.searchParams.get('farmId') || 'c7972aad-664f-43ad-934d-d88708d3e315';
         
         console.log('Intercepted Vercel request:', path, type, config?.method);
@@ -30,7 +35,7 @@ window.fetch = async function(resource, config) {
 
             if (path.includes('/api/beta/ndvi')) {
                 const { data } = await supabaseClient.from('PastureRecord')
-                    .select('ndvi, date, Paddock!inner(name, farmId)')
+                    .select('ndvi, date, tileUrl, Paddock!inner(name, farmId)')
                     .eq('type', 'SATELLITE')
                     .eq('Paddock.farmId', farmId);
                 
@@ -38,7 +43,7 @@ window.fetch = async function(resource, config) {
                 data?.forEach(r => {
                     const d = new Date(r.date);
                     const dateStr = `${d.getUTCDate().toString().padStart(2, '0')}/${(d.getUTCMonth()+1).toString().padStart(2, '0')}/${d.getUTCFullYear()}`;
-                    csv += `${r.Paddock.name},${dateStr},${r.ndvi || ""},0,\n`;
+                    csv += `${r.Paddock.name},${dateStr},${r.ndvi || ""},0,${r.tileUrl || ""}\n`;
                 });
                 return new Response(csv);
             }
@@ -100,13 +105,17 @@ window.fetch = async function(resource, config) {
                     return new Response(JSON.stringify({ success: true }));
                 }
                 const { data } = await supabaseClient.from('Vehicle').select('*, MaintenanceLog(*)').eq('farmId', farmId).eq('isDeleted', false);
+                const flatLogs = [];
+                const vehicles = data?.map(v => {
+                    if (v.MaintenanceLog) {
+                        v.MaintenanceLog.forEach(l => flatLogs.push({ ...l, date: l.date ? new Date(l.date).toISOString() : null }));
+                    }
+                    return { ...v, logs: undefined }; // or leave it, doesn't matter
+                });
                 return new Response(JSON.stringify({
-                    vehicles: data?.map(v => ({
-                        ...v,
-                        logs: v.MaintenanceLog?.map(l => ({
-                            ...l, date: new Date(l.date).toISOString()
-                        }))
-                    }))
+                    success: true,
+                    vehicles: vehicles || [],
+                    logs: flatLogs
                 }));
             }
 
@@ -142,9 +151,9 @@ window.fetch = async function(resource, config) {
                     ]);
                     
                     return new Response(JSON.stringify({
-                        incidents: incidents.data?.map(i => ({ ...i, date: new Date(i.date).toISOString() })) || [],
-                        observations: observations.data?.map(o => ({ ...o, date: new Date(o.date).toISOString() })) || [],
-                        interactions: observations.data?.map(o => ({ ...o, date: new Date(o.date).toISOString() })) || [],
+                        incidents: incidents.data?.map(i => ({ ...i, date: i.date ? new Date(i.date).toISOString() : null })) || [],
+                        observations: observations.data?.map(o => ({ ...o, date: o.date ? new Date(o.date).toISOString() : null })) || [],
+                        interactions: observations.data?.map(o => ({ ...o, date: o.date ? new Date(o.date).toISOString() : null })) || [],
                         hazards: hazards.data?.map(h => ({ ...h, date: h.date ? new Date(h.date).toISOString() : undefined })) || [],
                         meetings: meetings.data?.map(m => ({ ...m, date: m.date ? new Date(m.date).toISOString() : undefined })) || [],
                         staff: staff.data || []
