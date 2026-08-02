@@ -5,7 +5,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const originalFetch = window.fetch;
 window.fetch = async function(resource, config) {
     if (typeof resource === 'string' && resource.includes('/api/supabase')) {
-        const url = new URL(resource);
+        const url = new URL(resource, window.location.origin);
         const path = url.pathname;
         let type = url.searchParams.get('type');
         let body = {};
@@ -15,7 +15,7 @@ window.fetch = async function(resource, config) {
         }
         const farmId = url.searchParams.get('farmId') || 'c7972aad-664f-43ad-934d-d88708d3e315';
         
-        console.log('Intercepted Vercel request:', path, type, config?.method);
+        console.log('Intercepted Supabase request:', path, type, config?.method);
 
         try {
             if (path.includes('/api/supabase/paddocks')) {
