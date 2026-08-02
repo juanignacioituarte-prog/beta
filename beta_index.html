@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>\n    <script>window.onerror = function(msg, url, line, col, error) { alert(\'Error: \' + msg + \'\\nLine: \' + line + \'\\nCol: \' + col + \'\\nStack: \' + (error?error.stack:\'\')); }; window.addEventListener(\'unhandledrejection\', function(e) { alert(\'Unhandled Promise Rejection: \' + (e.reason?e.reason.stack:e.reason)); });</script>
+<head>\n    <script>window.onerror = function(msg, url, line, col, error) { alert(\'Error: \' + msg + \'\\nLine: \' + line + \'\\nCol: \' + col + \'\\nStack: \' + (error?error.stack:\'\')); }; const origErr = console.error; console.error = function(...args) { alert(\'Console Error:\\n\' + args.map(a => typeof a === \'object\' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a).join(\' \')); origErr.apply(console, args); }; window.addEventListener(\'unhandledrejection\', function(e) { alert(\'Unhandled Promise Rejection: \' + (e.reason?e.reason.stack:e.reason)); });</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2ecc71">
