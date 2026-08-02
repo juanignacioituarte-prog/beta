@@ -4670,10 +4670,10 @@
                                             finalMap.set(idStr, lb);
                                         }
                                     } else {
-                                        // Missing from cloud - assume it was lost
-                                        // Keep it and re-sync to heal database.
-                                        lb.synced = false;
-                                        finalMap.set(idStr, lb);
+                                        // Missing from cloud: only keep if created locally offline and NEVER synced
+                                        if (lb.synced === false) {
+                                            finalMap.set(idStr, lb);
+                                        }
                                     }
                                 }
                             });
@@ -4774,10 +4774,10 @@
                             const cloudVersion = cloudMap.get(idStr);
                             
                             if (!cloudVersion) {
-                                // Missing from cloud entirely - assume it was lost
-                                // Keep it and re-sync to heal database.
-                                lb.synced = false;
-                                cloudMap.set(idStr, lb);
+                                // Missing from cloud: only keep if created locally offline and NEVER synced
+                                if (lb.synced === false) {
+                                    cloudMap.set(idStr, lb);
+                                }
                             } else {
                                 // Exists in both - check timestamps to see which one is newer
                                 const localTime = new Date(lb.lastEditedAt || lb.createdAt || 0).getTime();
