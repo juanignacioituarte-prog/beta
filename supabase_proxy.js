@@ -168,8 +168,22 @@ window.fetch = async function(resource, config) {
                         const mdM=desc.match(/^(.*?)\s*\(/); if(mdM) desc=mdM[1].trim();
                         let name=desc; const dIdx=desc.indexOf('-'); if(dIdx>0){ name=desc.substring(0,dIdx).trim(); desc=desc.substring(dIdx+1).trim(); }
                         let lat=0, lng=0, polygon=[];
-                        try{ const p=JSON.parse(h.coordinates); if(Array.isArray(p)){ polygon=p; if(p.length>0){lat=p[0].lat;lng=p[0].lng;} }else{ lat=p.lat;lng=p.lng; } }catch(e){}
-                        return { id: h.id, name, severity, type, description: desc, reportedBy: h.reportedBy||'Unknown', reportedAt: h.date, status: h.status, mitigation: h.mitigation||'', lat, lng, polygon };
+                        let parsedCoords = null;
+                        try{
+                            parsedCoords = typeof h.coordinates === 'string' ? JSON.parse(h.coordinates) : h.coordinates;
+                            if (Array.isArray(parsedCoords)) {
+                                polygon = parsedCoords;
+                                if (polygon.length > 0) { lat = polygon[0].lat; lng = polygon[0].lng; }
+                            } else if (parsedCoords && typeof parsedCoords === 'object') {
+                                lat = parsedCoords.lat || h.lat || 0;
+                                lng = parsedCoords.lng || h.lng || 0;
+                            }
+                        }catch(e){
+                            lat = h.lat || 0;
+                            lng = h.lng || 0;
+                        }
+                        const finalCoords = (type === 'point' || !Array.isArray(polygon) || polygon.length === 0) ? { lat: lat || h.lat || 0, lng: lng || h.lng || 0 } : polygon;
+                        return { id: h.id, name: name || h.name || 'Unnamed Hazard', severity: severity || h.severity || 'Medium', type: type || h.type || 'point', description: desc || h.description || '', reportedBy: h.reportedBy||'Unknown', reportedAt: h.date || h.createdAt || new Date().toISOString(), status: h.status || 'active', mitigation: h.mitigation||'', lat: lat || h.lat || 0, lng: lng || h.lng || 0, polygon, coordinates: finalCoords };
                     });
 
                     const formatObs = arr => (arr || []).map(o => {
