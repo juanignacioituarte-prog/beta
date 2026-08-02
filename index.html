@@ -4666,12 +4666,12 @@
                                         const localTime = new Date(lb.lastEditedAt || lb.createdAt || 0).getTime();
                                         const cloudTime = new Date(cloudVersion.lastEditedAt || cloudVersion.createdAt || 0).getTime();
                                         
-                                        if (lb.synced === false || localTime > cloudTime) {
+                                        if (lb.synced !== true || localTime > cloudTime) {
                                             finalMap.set(idStr, lb);
                                         }
                                     } else {
-                                        // Missing from cloud: only keep if created locally offline and NEVER synced
-                                        if (lb.synced === false) {
+                                        // Missing from cloud: keep if created locally and not yet synced
+                                        if (lb.synced !== true) {
                                             finalMap.set(idStr, lb);
                                         }
                                     }
@@ -4774,8 +4774,8 @@
                             const cloudVersion = cloudMap.get(idStr);
                             
                             if (!cloudVersion) {
-                                // Missing from cloud: only keep if created locally offline and NEVER synced
-                                if (lb.synced === false) {
+                                // Missing from cloud: keep if created locally and not yet synced
+                                if (lb.synced !== true) {
                                     cloudMap.set(idStr, lb);
                                 }
                             } else {
@@ -4783,7 +4783,7 @@
                                 const localTime = new Date(lb.lastEditedAt || lb.createdAt || 0).getTime();
                                 const cloudTime = new Date(cloudVersion.lastEditedAt || cloudVersion.createdAt || 0).getTime();
                                 
-                                if (lb.synced === false || lb.isDeleted || localTime > cloudTime) {
+                                if (lb.synced !== true || lb.isDeleted || localTime > cloudTime) {
                                     cloudMap.set(idStr, lb);
                                 }
                             }
