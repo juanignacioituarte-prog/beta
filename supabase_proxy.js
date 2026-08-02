@@ -5,7 +5,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const originalFetch = window.fetch;
 window.fetch = async function(resource, config) {
     if (typeof resource === 'string' && resource.includes('/api/supabase')) {
-        const url = new URL(resource, window.location.origin);
+        const url = new URL(resource, window.location.href);
         const path = url.pathname;
         let type = url.searchParams.get('type');
         let body = {};
@@ -204,5 +204,5 @@ window.fetch = async function(resource, config) {
         }
     }
     
-    return originalFetch.apply(this, arguments);
+    return originalFetch.apply(window, arguments);
 };
