@@ -121,6 +121,18 @@ window.fetch = async function(resource, config) {
 
             if (path.includes('/api/supabase/hs')) {
                 if (config?.method === 'POST') {
+                    if (body.type === 'feed_settings' || body.residual !== undefined) {
+                        try {
+                            await supabaseClient.from('FeedSetting').upsert({
+                                id: 'feed-config-' + farmId,
+                                farmId: farmId,
+                                key: 'full_config',
+                                value: JSON.stringify(body)
+                            }, { onConflict: 'id' });
+                        } catch(e) { console.error('Error upserting feed settings:', e); }
+                        return new Response(JSON.stringify({ status: 'success', success: true }));
+                    }
+
                     if (body.type === 'breaks' && Array.isArray(body.breaks)) {
                         try {
                             const rowsToUpsert = body.breaks.map(b => {
@@ -128,35 +140,48 @@ window.fetch = async function(resource, config) {
                                 if (!Array.isArray(points) && points && typeof points === 'object') {
                                     points = points.points || points.vertices || [];
                                 }
+                                const metaPayload = {
+                                    points: points,
+                                    areaSqm: b.areaSqm,
+                                    timeStayHrs: b.timeStayHrs,
+                                    shiftType: b.shiftType,
+                                    manualResidual: b.manualResidual,
+                                    cropWidthMeters: b.cropWidthMeters,
+                                    group: b.group,
+                                    comment: b.comment,
+                                    isCropBreak: b.isCropBreak,
+                                    cropStatus: b.cropStatus,
+                                    lastEditedAt: b.lastEditedAt,
+                                    lastEditedBy: b.lastEditedBy,
+                                    deletedBy: b.deletedBy
+                                };
                                 return {
                                     id: String(b.id),
                                     farmId: farmId,
                                     name: b.name || '',
-                                    paddock: b.paddock || '',
-                                    vertices: JSON.stringify(points),
-                                    areaSqm: b.areaSqm || (b.areaHa ? Math.round(b.areaHa * 10000) : 0),
+                                    vertices: JSON.stringify(metaPayload),
                                     areaHa: b.areaHa || (b.areaSqm ? b.areaSqm / 10000 : 0),
                                     distanceMeters: b.distanceMeters || 0,
-                                    cropWidthMeters: b.cropWidthMeters || 0,
                                     cropMode: b.cropMode || 'polygon',
+                                    isCropBreak: !!b.isCropBreak,
+                                    status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
                                     createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
                                     createdBy: b.createdBy || 'Unknown',
-                                    group: b.group || '1st',
-                                    comment: b.comment || '',
-                                    isCropBreak: !!b.isCropBreak,
-                                    cropStatus: b.cropStatus || 'marked',
-                                    status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
-                                    isDeleted: !!(b.isDeleted || b.deletedAt),
-                                    deletedBy: b.deletedBy || null,
-                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null,
-                                    lastEditedBy: b.lastEditedBy || null,
-                                    lastEditedAt: b.lastEditedAt ? new Date(b.lastEditedAt).toISOString() : null
+                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null
                                 };
                             });
                             await supabaseClient.from('Break').upsert(rowsToUpsert, { onConflict: 'id' });
                         } catch(e) { console.error('Error upserting breaks:', e); }
                     }
                     return new Response(JSON.stringify({ status: 'success', success: true }));
+                }
+
+                if (!type) {
+                    const { data } = await supabaseClient.from('FeedSetting').select('*').eq('farmId', farmId).eq('key', 'full_config');
+                    if (data && data.length > 0 && data[0].value) {
+                        return new Response(data[0].value);
+                    }
+                    return new Response(JSON.stringify({}));
                 }
 
                 if (type === 'get_auth' || type === 'auth_list') {
