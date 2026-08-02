@@ -4,6 +4,23 @@
 <head>
     <script>window.onerror = function(msg, url, line, col, error) { alert('Error: ' + msg + '\nLine: ' + line + '\nCol: ' + col + '\nStack: ' + (error?error.stack:'')); }; const origErr = console.error; console.error = function(...args) { alert('Console Error:\n' + args.map(a => typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a).join(' ')); origErr.apply(console, args); }; window.addEventListener('unhandledrejection', function(e) { alert('Unhandled Promise Rejection: ' + (e.reason?e.reason.stack:e.reason)); });</script>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) caches.delete(name);
+            });
+        }
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2ecc71">
     <meta name="apple-mobile-web-app-capable" content="yes">
