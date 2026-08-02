@@ -78,10 +78,52 @@ window.fetch = async function(resource, config) {
             }
 
             if (path.includes('/api/supabase/manual')) {
+                if (config?.method === 'POST') {
+                    try {
+                        const { date, entries } = body;
+                        if (Array.isArray(entries)) {
+                            const { data: paddockRows } = await supabaseClient.from('Paddock').select('id, name').eq('farmId', farmId);
+                            const paddockMap = new Map();
+                            (paddockRows || []).forEach(p => paddockMap.set(String(p.name).toLowerCase().trim(), p.id));
+
+                            const recordsToUpsert = [];
+                            for (const item of entries) {
+                                const pName = String(item.paddockName || '').trim();
+                                const paddockId = item.paddockId || paddockMap.get(pName.toLowerCase());
+                                if (paddockId && item.cover !== null && item.cover !== undefined && item.cover !== '') {
+                                    recordsToUpsert.push({
+                                        id: `man-${paddockId}-${date || Date.now()}`,
+                                        paddockId: paddockId,
+                                        date: new Date(date || Date.now()).toISOString(),
+                                        cover: Number(item.cover),
+                                        type: 'MANUAL'
+                                    });
+                                }
+
+                                if (item.isExcluded) {
+                                    await supabaseClient.from('PaddockExclusion').upsert({
+                                        id: `ex-${pName}`,
+                                        farmId: farmId,
+                                        paddockName: pName,
+                                        reason: 'out_of_rotation'
+                                    }, { onConflict: 'id' });
+                                } else if (item.isExcluded === false) {
+                                    await supabaseClient.from('PaddockExclusion').delete().eq('farmId', farmId).eq('paddockName', pName);
+                                }
+                            }
+
+                            if (recordsToUpsert.length > 0) {
+                                await supabaseClient.from('PastureRecord').upsert(recordsToUpsert, { onConflict: 'id' });
+                            }
+                        }
+                    } catch(e) { console.error('Error saving manual farmwalk:', e); }
+                    return new Response(JSON.stringify({ status: 'success', success: true }));
+                }
+
                 const { data } = await supabaseClient.from('ManualMode').select('*').eq('farmId', farmId);
                 let csv = '';
                 if (data && data.length > 0) {
-                    csv = data[0].data; // Assuming stored as CSV string in data field based on manual logic
+                    csv = data[0].data;
                 }
                 return new Response(csv);
             }

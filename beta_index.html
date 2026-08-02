@@ -79,6 +79,79 @@
             background: #f9f9f9;
             cursor: pointer;
             border-radius: 6px;
+            font-weight: bold;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .farmwalk-paddock-card {
+            background: white;
+            border-radius: 10px;
+            padding: 14px 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+            transition: all 0.25s ease-in-out;
+        }
+        .farmwalk-paddock-card.highlighted-card {
+            border: 2px solid #27ae60 !important;
+            background: #f0fff4 !important;
+            box-shadow: 0 0 12px rgba(39, 174, 96, 0.4) !important;
+        }
+        .farmwalk-paddock-card.excluded-card {
+            border: 1px dashed #e74c3c !important;
+            background: #fff5f5 !important;
+        }
+        .farmwalk-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .farmwalk-card-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #2c3e50;
+        }
+        .farmwalk-card-area {
+            font-size: 12px;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+        .farmwalk-prev-cover-box {
+            background: #edf2f7;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 12px;
+            color: #4a5568;
+        }
+        .farmwalk-card-inputs {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .farmwalk-cover-input-group {
+            flex: 1;
+            min-width: 140px;
+        }
+        .farmwalk-cover-input-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 4px;
+        }
+        .farmwalk-cover-input-group input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+            border-radius: 6px;
             font-size: 11px;
             font-weight: bold;
             color: #777;
@@ -1633,6 +1706,11 @@
                     </div>
                 </div>
                 <div class="sync-note">Synchronized on <span id="sync-time">...</span></div>
+                <div id="farmwalk-header-actions" style="margin-top:10px;">
+                    <button id="btn-add-farmwalk-entry" onclick="switchDashboardMode('add_farmwalk')" style="background:#27ae60; color:white; border:none; padding:8px 14px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 5px rgba(39,174,96,0.3); width:100%; transition:all 0.2s;">
+                        ➕ + Farmwalk (Enter Pasture Covers)
+                    </button>
+                </div>
             </div>
 
             <input type="text" id="search" placeholder="Search paddocks..." style="margin-top:8px;">
@@ -2188,6 +2266,53 @@
                 <button id="btn-cancel-paddock" style="flex:1; padding:12px; border:1px solid #ddd; background:#f9f9f9; border-radius:8px; font-weight:bold; cursor:pointer;">NO</button>
                 <button id="btn-confirm-paddock" style="flex:1; padding:12px; border:none; background:var(--accent); color:white; border-radius:8px; font-weight:bold; cursor:pointer;">YES</button>
             </div>
+        </div>
+    </div>
+
+    <!-- + FARMWALK View Panel -->
+    <div id="add-farmwalk-view" style="display:none; padding:15px; flex-grow:1; background:#f4f6f7; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+        <!-- Top Sticky Header Bar with Date Picker & Save Button -->
+        <div style="position:sticky; top:0; z-index:100; background:white; padding:12px 15px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <h3 style="margin:0; color:#2c3e50; font-size:17px; display:flex; align-items:center; gap:6px;">
+                    <span style="color:#27ae60;">📊</span> + Farmwalk
+                </h3>
+                <div style="display:flex; align-items:center; gap:6px; background:#edf2f7; padding:4px 8px; border-radius:6px;">
+                    <label for="farmwalk-date-picker" style="font-size:11px; font-weight:bold; color:#4a5568;">Date:</label>
+                    <input type="date" id="farmwalk-date-picker" style="border:1px solid #cbd5e0; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#2d3748; background:white;">
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button id="btn-save-farmwalk-db" onclick="saveFarmwalkToDatabase()" style="background:#27ae60; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; font-size:13px; cursor:pointer; box-shadow:0 2px 5px rgba(39,174,96,0.3); transition:all 0.2s;">
+                    💾 Save Farmwalk
+                </button>
+                <button onclick="switchDashboardMode('manual')" style="background:#7f8c8d; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">
+                    Close
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Banner Notification -->
+        <div id="farmwalk-status-banner" style="display:none; padding:10px 15px; border-radius:6px; margin-bottom:12px; font-size:13px; font-weight:bold;"></div>
+
+        <!-- Interactive Map Section -->
+        <div style="background:white; border-radius:10px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:15px;">
+            <div style="font-size:12px; font-weight:bold; color:#2c3e50; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>🗺️ Select Paddock on Map (Click to Jump to Card)</span>
+                <small style="color:#7f8c8d; font-weight:normal;">Click any paddock polygon to scroll to its card</small>
+            </div>
+            <div id="add-farmwalk-map" style="height:320px; width:100%; border-radius:8px; border:1px solid #e2e8f0; z-index:1;"></div>
+        </div>
+
+        <!-- Filter/Search Bar -->
+        <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
+            <input type="text" id="farmwalk-card-search" placeholder="🔍 Search paddock by name..." oninput="filterFarmwalkCards()" style="flex:1; padding:9px 12px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <span id="farmwalk-card-count" style="font-size:12px; font-weight:bold; color:#718096; white-space:nowrap;">-- paddocks</span>
+        </div>
+
+        <!-- Paddock Cards Container -->
+        <div id="farmwalk-cards-container" style="display:flex; flex-direction:column; gap:10px; padding-bottom:30px;">
+            <!-- Paddock cards rendered dynamically -->
         </div>
     </div>
 
@@ -3087,7 +3212,7 @@
             selectedBreakIds.clear();
             currentDashboardMode = mode;
             document.getElementById('btn-mode-sat').classList.toggle('active', mode === 'satellite');
-            document.getElementById('btn-mode-man').classList.toggle('active', mode === 'manual');
+            document.getElementById('btn-mode-man').classList.toggle('active', mode === 'manual' || mode === 'add_farmwalk');
             document.getElementById('btn-mode-feed').classList.toggle('active', mode === 'feed');
             document.getElementById('btn-mode-breaks').classList.toggle('active', mode === 'breaks');
 
@@ -3103,6 +3228,12 @@
             }
 
             // UI Toggles
+            const fwHeaderActions = document.getElementById('farmwalk-header-actions');
+            if (fwHeaderActions) fwHeaderActions.style.display = (mode === 'manual') ? 'block' : 'none';
+
+            const addFwView = document.getElementById('add-farmwalk-view');
+            if (addFwView) addFwView.style.display = (mode === 'add_farmwalk') ? 'block' : 'none';
+
             document.getElementById('calibration-box').style.display = (mode === 'satellite' && calibrationModel) ? 'block' : 'none';
             document.getElementById('sat-layer-controls').style.display = (mode === 'satellite' || mode === 'breaks' || mode === 'health_safety') ? 'flex' : 'none';
             document.getElementById('latest-date').style.display = (mode === 'satellite' || mode === 'breaks' || mode === 'health_safety') ? 'block' : 'none';
@@ -3116,6 +3247,297 @@
             if (mode !== 'health_safety' && typeof isDrawingHazard !== 'undefined' && isDrawingHazard) {
                 cancelHazardDrawing();
             }
+
+            if (mode === 'add_farmwalk') {
+                document.getElementById('map').style.display = 'none';
+                document.getElementById('list').style.display = 'none';
+                initAddFarmwalkView();
+                return;
+            }
+
+        /* === + FARMWALK ENTRY VIEW LOGIC === */
+        let addFarmwalkMap = null;
+        let addFarmwalkMapLayers = new Map();
+
+        function initAddFarmwalkView() {
+            const datePicker = document.getElementById('farmwalk-date-picker');
+            if (datePicker && !datePicker.value) {
+                datePicker.value = new Date().toISOString().split('T')[0];
+            }
+
+            if (!addFarmwalkMap) {
+                addFarmwalkMap = L.map('add-farmwalk-map', { zoomControl: true });
+                L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    maxZoom: 20
+                }).addTo(addFarmwalkMap);
+            }
+
+            setTimeout(() => {
+                if (addFarmwalkMap) addFarmwalkMap.invalidateSize();
+                renderAddFarmwalkMapAndCards();
+            }, 100);
+        }
+
+        function renderAddFarmwalkMapAndCards() {
+            if (!paddocksData || !paddocksData.features) return;
+
+            addFarmwalkMapLayers.forEach(l => addFarmwalkMap.removeLayer(l));
+            addFarmwalkMapLayers.clear();
+
+            const container = document.getElementById('farmwalk-cards-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const bounds = L.latLngBounds();
+
+            const sortedFeatures = [...paddocksData.features].sort((a, b) => {
+                const nameA = String(a.properties.name || '').toLowerCase();
+                const nameB = String(b.properties.name || '').toLowerCase();
+                return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            const countEl = document.getElementById('farmwalk-card-count');
+            if (countEl) countEl.innerText = `${sortedFeatures.length} paddocks`;
+
+            sortedFeatures.forEach(feature => {
+                const p = feature.properties;
+                const pName = p.name || 'Paddock';
+                const pId = String(p.id || pName).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+                let prevCover = null;
+                let prevDateStr = '';
+                if (paddockHistory && paddockHistory[pName] && paddockHistory[pName].length > 0) {
+                    const latest = paddockHistory[pName][0];
+                    prevCover = latest.cover;
+                    if (latest.date) {
+                        const d = new Date(latest.date);
+                        prevDateStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+                    }
+                } else if (p.measuredCover) {
+                    prevCover = p.measuredCover;
+                }
+
+                const isExcluded = PADDOCK_EXCLUSIONS.has(pName.toLowerCase());
+
+                const card = document.createElement('div');
+                card.id = `paddock-card-${pId}`;
+                card.className = `farmwalk-paddock-card ${isExcluded ? 'excluded-card' : ''}`;
+                card.setAttribute('data-name', pName.toLowerCase());
+
+                card.innerHTML = `
+                    <div class="farmwalk-card-header">
+                        <span class="farmwalk-card-title">${pName} ${isExcluded ? '<span style="color:#e74c3c; font-size:11px; margin-left:6px;">[OUT OF ROTATION]</span>' : ''}</span>
+                        <span class="farmwalk-card-area">${p.calcArea ? p.calcArea.toFixed(1) + ' ha' : ''}</span>
+                    </div>
+                    <div class="farmwalk-prev-cover-box">
+                        <span>Previous Cover: <strong>${prevCover !== null && prevCover !== undefined ? prevCover : 'No reading'}</strong> kgDM/ha</span>
+                        ${prevDateStr ? `<small style="display:block; color:#718096; margin-top:2px;">Measured on ${prevDateStr}</small>` : ''}
+                    </div>
+                    <div class="farmwalk-card-inputs">
+                        <div class="farmwalk-cover-input-group">
+                            <label for="inp-fw-cover-${pId}">Latest Cover (kgDM/ha):</label>
+                            <input type="number" id="inp-fw-cover-${pId}" class="fw-cover-inp" placeholder="e.g. 2100" min="0" max="6000">
+                        </div>
+                        <div id="rotation-box-${pId}">
+                            ${isExcluded ? `
+                                <button type="button" onclick="togglePaddockRotation('${pId}', '${pName}', false)" style="background:#27ae60; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                                    🔄 Return to Rotation
+                                </button>
+                            ` : `
+                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#c0392b; font-weight:bold; font-size:12px; background:#fff5f5; padding:8px 10px; border-radius:6px; border:1px solid #feb2b2;">
+                                    <input type="checkbox" id="chk-fw-out-${pId}" onchange="onPaddockRotationCheckChange('${pId}', '${pName}')">
+                                    <span>🚫 Put Paddock Out of Rotation</span>
+                                </label>
+                            `}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                if (feature.geometry) {
+                    try {
+                        const geoLayer = L.geoJSON(feature, {
+                            style: {
+                                color: isExcluded ? '#e74c3c' : '#27ae60',
+                                weight: 2,
+                                fillColor: isExcluded ? '#e74c3c' : '#2ecc71',
+                                fillOpacity: 0.35
+                            }
+                        }).addTo(addFarmwalkMap);
+
+                        geoLayer.bindTooltip(pName, { permanent: true, direction: 'center', className: 'paddock-label' });
+
+                        geoLayer.on('click', () => {
+                            addFarmwalkMapLayers.forEach(l => {
+                                if (l.setStyle) l.setStyle({ weight: 2 });
+                            });
+                            geoLayer.setStyle({ weight: 4, color: '#f39c12', fillColor: '#f1c40f', fillOpacity: 0.6 });
+
+                            const cardEl = document.getElementById(`paddock-card-${pId}`);
+                            if (cardEl) {
+                                document.querySelectorAll('.farmwalk-paddock-card').forEach(c => c.classList.remove('highlighted-card'));
+                                cardEl.classList.add('highlighted-card');
+                                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        });
+
+                        const layerBounds = geoLayer.getBounds();
+                        if (layerBounds.isValid()) bounds.extend(layerBounds);
+
+                        addFarmwalkMapLayers.set(pId, geoLayer);
+                    } catch(e){}
+                }
+            });
+
+            if (bounds.isValid()) {
+                setTimeout(() => addFarmwalkMap.fitBounds(bounds, { padding: [20, 20] }), 200);
+            }
+        }
+
+        function onPaddockRotationCheckChange(pId, pName) {
+            const chk = document.getElementById(`chk-fw-out-${pId}`);
+            if (chk && chk.checked) {
+                togglePaddockRotation(pId, pName, true);
+            }
+        }
+
+        function togglePaddockRotation(pId, pName, isOut) {
+            if (isOut) {
+                PADDOCK_EXCLUSIONS.add(pName.toLowerCase());
+            } else {
+                PADDOCK_EXCLUSIONS.delete(pName.toLowerCase());
+            }
+            const cardEl = document.getElementById(`paddock-card-${pId}`);
+            if (cardEl) {
+                if (isOut) cardEl.classList.add('excluded-card');
+                else cardEl.classList.remove('excluded-card');
+            }
+            const rotBox = document.getElementById(`rotation-box-${pId}`);
+            if (rotBox) {
+                if (isOut) {
+                    rotBox.innerHTML = `
+                        <button type="button" onclick="togglePaddockRotation('${pId}', '${pName}', false)" style="background:#27ae60; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                            🔄 Return to Rotation
+                        </button>
+                    `;
+                } else {
+                    rotBox.innerHTML = `
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#c0392b; font-weight:bold; font-size:12px; background:#fff5f5; padding:8px 10px; border-radius:6px; border:1px solid #feb2b2;">
+                            <input type="checkbox" id="chk-fw-out-${pId}" onchange="onPaddockRotationCheckChange('${pId}', '${pName}')">
+                            <span>🚫 Put Paddock Out of Rotation</span>
+                        </label>
+                    `;
+                }
+            }
+            const geoLayer = addFarmwalkMapLayers.get(pId);
+            if (geoLayer) {
+                geoLayer.setStyle({
+                    color: isOut ? '#e74c3c' : '#27ae60',
+                    fillColor: isOut ? '#e74c3c' : '#2ecc71'
+                });
+            }
+        }
+
+        function filterFarmwalkCards() {
+            const q = (document.getElementById('farmwalk-card-search')?.value || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.farmwalk-paddock-card');
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const name = card.getAttribute('data-name') || '';
+                if (name.includes(q)) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            const countEl = document.getElementById('farmwalk-card-count');
+            if (countEl) countEl.innerText = `${visibleCount} paddocks`;
+        }
+
+        async function saveFarmwalkToDatabase() {
+            const btn = document.getElementById('btn-save-farmwalk-db');
+            const banner = document.getElementById('farmwalk-status-banner');
+            const dateVal = document.getElementById('farmwalk-date-picker')?.value || new Date().toISOString().split('T')[0];
+
+            if (!paddocksData || !paddocksData.features) return;
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "⏳ Saving to Database...";
+            }
+
+            const entries = [];
+            paddocksData.features.forEach(feature => {
+                const p = feature.properties;
+                const pName = p.name;
+                const pId = String(p.id || pName).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+                const coverInput = document.getElementById(`inp-fw-cover-${pId}`);
+                const rotBox = document.getElementById(`rotation-box-${pId}`);
+                const isOut = PADDOCK_EXCLUSIONS.has(pName.toLowerCase());
+
+                const coverVal = coverInput ? coverInput.value.trim() : '';
+
+                if (coverVal !== '' || isOut) {
+                    entries.push({
+                        paddockName: pName,
+                        paddockId: p.id,
+                        cover: coverVal !== '' ? Number(coverVal) : null,
+                        isExcluded: isOut
+                    });
+                }
+            });
+
+            if (entries.length === 0) {
+                if (banner) {
+                    banner.style.display = 'block';
+                    banner.style.background = '#fff3cd';
+                    banner.style.color = '#856404';
+                    banner.style.border = '1px solid #ffeeba';
+                    banner.innerText = "⚠️ No covers or out-of-rotation changes were entered to save.";
+                }
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "💾 Save Farmwalk";
+                }
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/supabase/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date: dateVal, entries: entries })
+                });
+                const json = await res.json();
+
+                if (banner) {
+                    banner.style.display = 'block';
+                    banner.style.background = '#d4edda';
+                    banner.style.color = '#155724';
+                    banner.style.border = '1px solid #c3e6cb';
+                    banner.innerText = `✅ Farmwalk saved to Supabase database successfully! (${entries.length} paddock entries for ${dateVal})`;
+                }
+
+                if (typeof loadAllData === 'function') loadAllData();
+
+            } catch(e) {
+                console.error("Save farmwalk error:", e);
+                if (banner) {
+                    banner.style.display = 'block';
+                    banner.style.background = '#f8d7da';
+                    banner.style.color = '#721c24';
+                    banner.style.border = '1px solid #f5c6cb';
+                    banner.innerText = "❌ Failed to save farmwalk to database. Please try again.";
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "💾 Save Farmwalk";
+                }
+            }
+        }
 
             // Map vs Overlay Logic
             if (mode === 'feed') {
