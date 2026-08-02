@@ -3008,6 +3008,11 @@
             await Promise.all([loadStatusSheets(), loadManualSheet()]);
             await loadGeoJSON();
 
+            // Auto-sync all cloud data on boot
+            loadCSV();
+            syncHSFromCloud();
+            if (typeof syncVMFromCloud === 'function') syncVMFromCloud();
+
             const calibHoverArea = document.getElementById('calib-hover-area');
             const calibText = document.getElementById('calib-text');
             if (calibHoverArea && calibText) {
@@ -8432,11 +8437,14 @@
                     
                     document.getElementById('hs-sync-msg').innerText = "Updated from Cloud!";
                     
-                    // Re-render
+                    // Re-render lists and map markers
+                    renderStaffList();
+                    renderHazardList();
+                    renderMeetingsList();
+                    renderInteractionsList();
+                    renderIncidentsList();
+                    renderHazardsOnMap();
                     setHSTab(currentHSTab);
-                    if (currentDashboardMode === 'health_safety') {
-                        renderHazardsOnMap();
-                    }
                 }
             })
             .catch(err => {
