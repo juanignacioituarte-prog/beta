@@ -121,7 +121,26 @@ window.fetch = async function(resource, config) {
 
             if (path.includes('/api/supabase/hs')) {
                 if (config?.method === 'POST') {
-                    return new Response(JSON.stringify({ success: true }));
+                    if (body.type === 'breaks' && Array.isArray(body.breaks)) {
+                        try {
+                            const rowsToUpsert = body.breaks.map(b => ({
+                                id: b.id,
+                                farmId: farmId,
+                                name: b.name || '',
+                                vertices: b.vertices ? JSON.stringify(b.vertices) : null,
+                                areaHa: b.areaHa || (b.areaSqm ? b.areaSqm / 10000 : 0),
+                                distanceMeters: b.distanceMeters || 0,
+                                cropMode: b.cropMode || null,
+                                isCropBreak: !!b.isCropBreak,
+                                status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
+                                createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+                                createdBy: b.createdBy || 'Unknown',
+                                deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null
+                            }));
+                            await supabaseClient.from('Break').upsert(rowsToUpsert, { onConflict: 'id' });
+                        } catch(e) { console.error('Error upserting breaks:', e); }
+                    }
+                    return new Response(JSON.stringify({ status: 'success', success: true }));
                 }
 
                 if (type === 'get_auth' || type === 'auth_list') {
@@ -134,7 +153,8 @@ window.fetch = async function(resource, config) {
                     return new Response(JSON.stringify({
                         breaks: data?.map(b => ({
                             ...b,
-                            vertices: b.vertices ? JSON.parse(b.vertices) : [],
+                            vertices: b.vertices ? (typeof b.vertices === 'string' ? JSON.parse(b.vertices) : b.vertices) : [],
+                            cropStatus: b.status || 'marked',
                             createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
                             deletedAt: b.deletedAt ? new Date(b.deletedAt).toISOString() : null
                         }))
