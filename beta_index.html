@@ -2408,6 +2408,7 @@
 
         /* URLs */
         const GEOJSON_URL = "/api/supabase/paddocks?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        let paddocksData = null;
         const DATA_CSV_URL = "/api/supabase/ndvi?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
         const EXCLUSIONS_CSV_URL = "/api/supabase/exclusions?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
         const PARTIAL_CSV_URL = "/api/supabase/partial?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
@@ -3223,6 +3224,7 @@
             try {
                 const response = await fetch(GEOJSON_URL + "&t=" + Date.now());
                 const data = await response.json();
+                paddocksData = data;
                 data.features.forEach(f => { if (f.properties.name) areaLookup[f.properties.name] = f.properties.calcArea || 0; });
                 geoLayer = L.geoJSON(data, {
                     style: { color: 'white', weight: 1.5, fillOpacity: 0.1 },
@@ -3347,7 +3349,15 @@
             });
         }
 
-        function renderAddFarmwalkMapAndCards() {
+        async function renderAddFarmwalkMapAndCards() {
+            if (!paddocksData || !paddocksData.features) {
+                try {
+                    const res = await fetch(GEOJSON_URL + "&t=" + Date.now());
+                    paddocksData = await res.json();
+                } catch(e) {
+                    console.error("Failed to load paddocks GeoJSON:", e);
+                }
+            }
             if (!paddocksData || !paddocksData.features) return;
 
             addFarmwalkMapLayers.forEach(l => addFarmwalkMap.removeLayer(l));
