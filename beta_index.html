@@ -2200,8 +2200,8 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
     <script>
         /* === CONFIGURATION === */
-        const GOOGLE_SCRIPT_URL = "https://controlpanel-alpha.vercel.app/api/beta/hs";
-        const HS_GOOGLE_SCRIPT_URL = "https://controlpanel-alpha.vercel.app/api/beta/hs";
+        const GOOGLE_SCRIPT_URL = "/api/supabase/hs";
+        const HS_GOOGLE_SCRIPT_URL = "/api/supabase/hs";
         const ROSTER_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_qBldXyEMoIev8kxT8mCOZGSZBTlnymEsBA6pMLiJGboKVBYEryrMJDSzIdeIdlVUfA/exec";
 
         /* Health & Safety State */
@@ -2216,14 +2216,14 @@
         let hazardLayers = new Map(); // Store rendered Leaflet layers for hazards
 
         /* URLs */
-        const GEOJSON_URL = "https://controlpanel-alpha.vercel.app/api/beta/paddocks?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const DATA_CSV_URL = "https://controlpanel-alpha.vercel.app/api/beta/ndvi?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const EXCLUSIONS_CSV_URL = "https://controlpanel-alpha.vercel.app/api/beta/exclusions?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const PARTIAL_CSV_URL = "https://controlpanel-alpha.vercel.app/api/beta/partial?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const CAL_CSV_URL = "https://controlpanel-alpha.vercel.app/api/beta/cal?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const MANUAL_MODE_CSV = "https://controlpanel-alpha.vercel.app/api/beta/manual?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const FEED_SETTINGS_CSV = "https://controlpanel-alpha.vercel.app/api/beta/feed?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
-        const AUTH_CSV_URL = "https://controlpanel-alpha.vercel.app/api/beta/auth?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const GEOJSON_URL = "/api/supabase/paddocks?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const DATA_CSV_URL = "/api/supabase/ndvi?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const EXCLUSIONS_CSV_URL = "/api/supabase/exclusions?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const PARTIAL_CSV_URL = "/api/supabase/partial?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const CAL_CSV_URL = "/api/supabase/cal?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const MANUAL_MODE_CSV = "/api/supabase/manual?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const FEED_SETTINGS_CSV = "/api/supabase/feed?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
+        const AUTH_CSV_URL = "/api/supabase/auth?farmId=c7972aad-664f-43ad-934d-d88708d3e315";
 
         /* Rules */
         const NDVI_LOW_THRESHOLD = 0.30;
@@ -8595,7 +8595,7 @@
         }
 
         /* ===================== VEHICLE MAINTENANCE MODULE ===================== */
-        const VEHICLE_GOOGLE_SCRIPT_URL = "https://controlpanel-alpha.vercel.app/api/beta/vehicles";
+        const VEHICLE_GOOGLE_SCRIPT_URL = "/api/supabase/vehicles";
         let vmVehicles = JSON.parse(localStorage.getItem('vm_vehicles')) || [];
         let vmLogs = JSON.parse(localStorage.getItem('vm_logs')) || [];
         let currentVMTab = 'vehicles';

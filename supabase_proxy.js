@@ -4,7 +4,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const originalFetch = window.fetch;
 window.fetch = async function(resource, config) {
-    if (typeof resource === 'string' && resource.includes('controlpanel-alpha.vercel.app')) {
+    if (typeof resource === 'string' && resource.includes('/api/supabase')) {
         const url = new URL(resource);
         const path = url.pathname;
         let type = url.searchParams.get('type');
@@ -18,7 +18,7 @@ window.fetch = async function(resource, config) {
         console.log('Intercepted Vercel request:', path, type, config?.method);
 
         try {
-            if (path.includes('/api/beta/paddocks')) {
+            if (path.includes('/api/supabase/paddocks')) {
                 const { data } = await supabaseClient.from('Paddock').select('*').eq('farmId', farmId);
                 const featureCollection = {
                     type: "FeatureCollection",
@@ -33,7 +33,7 @@ window.fetch = async function(resource, config) {
                 return new Response(JSON.stringify(featureCollection));
             }
 
-            if (path.includes('/api/beta/ndvi')) {
+            if (path.includes('/api/supabase/ndvi')) {
                 const { data } = await supabaseClient.from('PastureRecord')
                     .select('ndvi, date, tileUrl, Paddock!inner(name, farmId)')
                     .eq('type', 'SATELLITE')
@@ -48,21 +48,21 @@ window.fetch = async function(resource, config) {
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/exclusions')) {
+            if (path.includes('/api/supabase/exclusions')) {
                 const { data } = await supabaseClient.from('PaddockExclusion').select('*').eq('farmId', farmId);
                 let csv = 'paddock,reason\n';
                 data?.forEach(e => csv += `${e.paddockName},${e.reason}\n`);
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/partial')) {
+            if (path.includes('/api/supabase/partial')) {
                 const { data } = await supabaseClient.from('PaddockPartial').select('*').eq('farmId', farmId);
                 let csv = 'paddock,status\n';
                 data?.forEach(e => csv += `${e.paddockName},${e.status}\n`);
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/cal')) {
+            if (path.includes('/api/supabase/cal')) {
                 const { data } = await supabaseClient.from('Calibration').select('*').eq('farmId', farmId);
                 let csv = 'paddock_name,measured_cover,date\n';
                 data?.forEach(c => {
@@ -77,7 +77,7 @@ window.fetch = async function(resource, config) {
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/manual')) {
+            if (path.includes('/api/supabase/manual')) {
                 const { data } = await supabaseClient.from('ManualMode').select('*').eq('farmId', farmId);
                 let csv = '';
                 if (data && data.length > 0) {
@@ -86,21 +86,21 @@ window.fetch = async function(resource, config) {
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/feed')) {
+            if (path.includes('/api/supabase/feed')) {
                 const { data } = await supabaseClient.from('FeedSetting').select('*').eq('farmId', farmId);
                 let csv = 'Setting,Value\n';
                 data?.forEach(f => csv += `${f.key},${f.value}\n`);
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/auth')) {
+            if (path.includes('/api/supabase/auth')) {
                 const { data } = await supabaseClient.from('User').select('email, role');
                 let csv = 'Email,Role\n';
                 data?.forEach(u => csv += `${u.email},${u.role || 'USER'}\n`);
                 return new Response(csv);
             }
 
-            if (path.includes('/api/beta/vehicles')) {
+            if (path.includes('/api/supabase/vehicles')) {
                 if (config?.method === 'POST') {
                     return new Response(JSON.stringify({ success: true }));
                 }
@@ -119,7 +119,7 @@ window.fetch = async function(resource, config) {
                 }));
             }
 
-            if (path.includes('/api/beta/hs')) {
+            if (path.includes('/api/supabase/hs')) {
                 if (config?.method === 'POST') {
                     return new Response(JSON.stringify({ success: true }));
                 }
