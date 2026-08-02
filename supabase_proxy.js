@@ -26,8 +26,8 @@ window.fetch = async function(resource, config) {
                     crs: { type: "name", properties: { name: "urn:ogc:def:crs:OGC:1.3:CRS84" } },
                     features: (data || []).map(p => ({
                         type: "Feature",
-                        properties: { id: p.id, name: p.name },
-                        geometry: p.boundary ? JSON.parse(p.boundary) : null
+                        properties: { ...p, id: p.id, name: p.name, calcArea: p.calcArea || p.areaHa || 0 },
+                        geometry: p.boundary ? (typeof p.boundary === 'string' ? JSON.parse(p.boundary) : p.boundary) : null
                     }))
                 };
                 return new Response(JSON.stringify(featureCollection));
@@ -123,20 +123,36 @@ window.fetch = async function(resource, config) {
                 if (config?.method === 'POST') {
                     if (body.type === 'breaks' && Array.isArray(body.breaks)) {
                         try {
-                            const rowsToUpsert = body.breaks.map(b => ({
-                                id: b.id,
-                                farmId: farmId,
-                                name: b.name || '',
-                                vertices: b.vertices ? JSON.stringify(b.vertices) : null,
-                                areaHa: b.areaHa || (b.areaSqm ? b.areaSqm / 10000 : 0),
-                                distanceMeters: b.distanceMeters || 0,
-                                cropMode: b.cropMode || null,
-                                isCropBreak: !!b.isCropBreak,
-                                status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
-                                createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
-                                createdBy: b.createdBy || 'Unknown',
-                                deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null
-                            }));
+                            const rowsToUpsert = body.breaks.map(b => {
+                                const metaPayload = {
+                                    points: b.vertices || [],
+                                    areaSqm: b.areaSqm,
+                                    timeStayHrs: b.timeStayHrs,
+                                    shiftType: b.shiftType,
+                                    manualResidual: b.manualResidual,
+                                    cropWidthMeters: b.cropWidthMeters,
+                                    group: b.group,
+                                    cropStatus: b.cropStatus,
+                                    isCropBreak: b.isCropBreak,
+                                    lastEditedAt: b.lastEditedAt,
+                                    lastEditedBy: b.lastEditedBy,
+                                    deletedBy: b.deletedBy
+                                };
+                                return {
+                                    id: b.id,
+                                    farmId: farmId,
+                                    name: b.name || '',
+                                    vertices: JSON.stringify(metaPayload),
+                                    areaHa: b.areaHa || (b.areaSqm ? b.areaSqm / 10000 : 0),
+                                    distanceMeters: b.distanceMeters || 0,
+                                    cropMode: b.cropMode || null,
+                                    isCropBreak: !!b.isCropBreak,
+                                    status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
+                                    createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
+                                    createdBy: b.createdBy || 'Unknown',
+                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null
+                                };
+                            });
                             await supabaseClient.from('Break').upsert(rowsToUpsert, { onConflict: 'id' });
                         } catch(e) { console.error('Error upserting breaks:', e); }
                     }
@@ -151,13 +167,40 @@ window.fetch = async function(resource, config) {
                 if (type === 'breaks') {
                     const { data } = await supabaseClient.from('Break').select('*').eq('farmId', farmId);
                     return new Response(JSON.stringify({
-                        breaks: data?.map(b => ({
-                            ...b,
-                            vertices: b.vertices ? (typeof b.vertices === 'string' ? JSON.parse(b.vertices) : b.vertices) : [],
-                            cropStatus: b.status || 'marked',
-                            createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
-                            deletedAt: b.deletedAt ? new Date(b.deletedAt).toISOString() : null
-                        }))
+                        breaks: data?.map(b => {
+                            let parsedVertices = [];
+                            let extraMeta = {};
+                            if (b.vertices) {
+                                try {
+                                    const p = typeof b.vertices === 'string' ? JSON.parse(b.vertices) : b.vertices;
+                                    if (Array.isArray(p)) {
+                                        parsedVertices = p;
+                                    } else if (p && typeof p === 'object') {
+                                        parsedVertices = p.points || p.vertices || [];
+                                        extraMeta = p;
+                                    }
+                                } catch(e){}
+                            }
+                            return {
+                                ...extraMeta,
+                                ...b,
+                                vertices: parsedVertices,
+                                areaSqm: b.areaSqm || extraMeta.areaSqm || (b.areaHa ? Math.round(b.areaHa * 10000) : 0),
+                                areaHa: b.areaHa || extraMeta.areaHa || 0,
+                                timeStayHrs: b.timeStayHrs || extraMeta.timeStayHrs || 24,
+                                shiftType: b.shiftType || extraMeta.shiftType || '24',
+                                manualResidual: b.manualResidual || extraMeta.manualResidual || 0,
+                                distanceMeters: b.distanceMeters || extraMeta.distanceMeters || 0,
+                                cropWidthMeters: b.cropWidthMeters || extraMeta.cropWidthMeters || 0,
+                                cropMode: b.cropMode || extraMeta.cropMode || 'polygon',
+                                cropStatus: b.status || b.cropStatus || extraMeta.cropStatus || 'marked',
+                                isCropBreak: b.isCropBreak !== undefined ? b.isCropBreak : (extraMeta.isCropBreak !== undefined ? extraMeta.isCropBreak : false),
+                                group: b.group || extraMeta.group || '1st',
+                                createdBy: b.createdBy || extraMeta.createdBy || 'Unknown User',
+                                createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
+                                deletedAt: b.deletedAt ? new Date(b.deletedAt).toISOString() : null
+                            };
+                        })
                     }));
                 }
 
@@ -178,7 +221,7 @@ window.fetch = async function(resource, config) {
                         const trM=desc.match(/Action Taken:\s*(.*?)[,\)]/i); if(trM) treatment=trM[1].trim();
                         const mdM=desc.match(/^(.*?)\s*\(/); if(mdM) desc=mdM[1].trim();
                         const d=i.date?new Date(i.date):new Date();
-                        return { id: i.id, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`, type, severity, reporter, treatment, description: desc, status: i.status };
+                        return { ...i, id: i.id, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`, type: i.type || type, severity: i.severity || severity, reporter: i.reporter || reporter, treatment: i.treatment || treatment, description: desc || i.description, status: i.status };
                     });
 
                     const formatHazards = arr => (arr || []).map(h => {
@@ -203,7 +246,7 @@ window.fetch = async function(resource, config) {
                             lng = h.lng || 0;
                         }
                         const finalCoords = (type === 'point' || !Array.isArray(polygon) || polygon.length === 0) ? { lat: lat || h.lat || 0, lng: lng || h.lng || 0 } : polygon;
-                        return { id: h.id, name: name || h.name || 'Unnamed Hazard', severity: severity || h.severity || 'Medium', type: type || h.type || 'point', description: desc || h.description || '', reportedBy: h.reportedBy||'Unknown', reportedAt: h.date || h.createdAt || new Date().toISOString(), status: h.status || 'active', mitigation: h.mitigation||'', lat: lat || h.lat || 0, lng: lng || h.lng || 0, polygon, coordinates: finalCoords };
+                        return { ...h, id: h.id, name: h.name || name || 'Unnamed Hazard', severity: h.severity || severity || 'Medium', type: h.type || type || 'point', description: h.description || desc || '', reportedBy: h.reportedBy||'Unknown', reportedAt: h.date || h.createdAt || new Date().toISOString(), status: h.status || 'active', mitigation: h.mitigation||'', lat: lat || h.lat || 0, lng: lng || h.lng || 0, polygon, coordinates: finalCoords };
                     });
 
                     const formatObs = arr => (arr || []).map(o => {
@@ -213,13 +256,13 @@ window.fetch = async function(resource, config) {
                         const dM=o.description?.match(/Details:\s*(.*?)\./i); if(dM) details=dM[1].trim();
                         const aM=o.description?.match(/Action:\s*(.*?)$/i); if(aM) action=aM[1].trim();
                         const d=o.date?new Date(o.date):new Date();
-                        return { id: o.id, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`, observer: o.observer||'Unknown', observed, type, details, action };
+                        return { ...o, id: o.id, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`, observer: o.observer||'Unknown', observed: o.observed || observed, type: o.type || type, details: o.details || details, action: o.action || action };
                     });
 
                     const formatMeetings = arr => (arr || []).map(m => {
-                        let topic=m.topic||'Safety Meeting', notes='';
+                        let topic=m.topic||'Safety Meeting', notes=m.notes||'';
                         const nM=m.topic?.match(/Notes:\s*(.*)/i); if(nM){ notes=nM[1].trim(); topic=m.topic.substring(0,m.topic.indexOf('Notes:')).replace('-','').trim(); }
-                        return { id: m.id, date: m.date, topic, notes, attendees: (m.attendees && typeof m.attendees === 'string') ? m.attendees.split(',').map(s=>s.trim()).filter(s=>s) : [] };
+                        return { ...m, id: m.id, date: m.date, topic: m.topic || topic, notes: m.notes || notes, attendees: (m.attendees && typeof m.attendees === 'string') ? m.attendees.split(',').map(s=>s.trim()).filter(s=>s) : (Array.isArray(m.attendees) ? m.attendees : []) };
                     });
 
                     return new Response(JSON.stringify({
