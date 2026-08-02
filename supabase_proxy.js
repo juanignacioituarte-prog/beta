@@ -1,6 +1,6 @@
 const SUPABASE_URL = 'https://adzglgpoqfjtgbpeiudf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkemdsZ3BvcWZqdGdicGVpdWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0Njg5NzUsImV4cCI6MjEwMTA0NDk3NX0.vc4tTP0fGvSoiVvJiSwzu0c3oh-Vf5DVvKjGDWbWF2o';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const originalFetch = window.fetch;
 window.fetch = async function(resource, config) {
@@ -14,7 +14,7 @@ window.fetch = async function(resource, config) {
 
         try {
             if (path.includes('/api/beta/paddocks')) {
-                const { data } = await supabase.from('Paddock').select('*').eq('farmId', farmId);
+                const { data } = await supabaseClient.from('Paddock').select('*').eq('farmId', farmId);
                 const featureCollection = {
                     type: "FeatureCollection",
                     name: "Paddocks",
@@ -29,7 +29,7 @@ window.fetch = async function(resource, config) {
             }
 
             if (path.includes('/api/beta/ndvi')) {
-                const { data } = await supabase.from('PastureRecord')
+                const { data } = await supabaseClient.from('PastureRecord')
                     .select('ndvi, date, Paddock!inner(name, farmId)')
                     .eq('type', 'SATELLITE')
                     .eq('Paddock.farmId', farmId);
@@ -44,21 +44,21 @@ window.fetch = async function(resource, config) {
             }
 
             if (path.includes('/api/beta/exclusions')) {
-                const { data } = await supabase.from('PaddockExclusion').select('*').eq('farmId', farmId);
+                const { data } = await supabaseClient.from('PaddockExclusion').select('*').eq('farmId', farmId);
                 let csv = 'paddock,reason\n';
                 data?.forEach(e => csv += `${e.paddockName},${e.reason}\n`);
                 return new Response(csv);
             }
 
             if (path.includes('/api/beta/partial')) {
-                const { data } = await supabase.from('PaddockPartial').select('*').eq('farmId', farmId);
+                const { data } = await supabaseClient.from('PaddockPartial').select('*').eq('farmId', farmId);
                 let csv = 'paddock,status\n';
                 data?.forEach(e => csv += `${e.paddockName},${e.status}\n`);
                 return new Response(csv);
             }
 
             if (path.includes('/api/beta/cal')) {
-                const { data } = await supabase.from('Calibration').select('*').eq('farmId', farmId);
+                const { data } = await supabaseClient.from('Calibration').select('*').eq('farmId', farmId);
                 let csv = 'paddock_name,measured_cover,date\n';
                 data?.forEach(c => {
                     let dateStr = '';
@@ -73,7 +73,7 @@ window.fetch = async function(resource, config) {
             }
 
             if (path.includes('/api/beta/manual')) {
-                const { data } = await supabase.from('ManualMode').select('*').eq('farmId', farmId);
+                const { data } = await supabaseClient.from('ManualMode').select('*').eq('farmId', farmId);
                 let csv = '';
                 if (data && data.length > 0) {
                     csv = data[0].data; // Assuming stored as CSV string in data field based on manual logic
@@ -82,14 +82,14 @@ window.fetch = async function(resource, config) {
             }
 
             if (path.includes('/api/beta/feed')) {
-                const { data } = await supabase.from('FeedSetting').select('*').eq('farmId', farmId);
+                const { data } = await supabaseClient.from('FeedSetting').select('*').eq('farmId', farmId);
                 let csv = 'Setting,Value\n';
                 data?.forEach(f => csv += `${f.key},${f.value}\n`);
                 return new Response(csv);
             }
 
             if (path.includes('/api/beta/auth')) {
-                const { data } = await supabase.from('User').select('email, role');
+                const { data } = await supabaseClient.from('User').select('email, role');
                 let csv = 'Email,Role\n';
                 data?.forEach(u => csv += `${u.email},${u.role || 'USER'}\n`);
                 return new Response(csv);
@@ -99,7 +99,7 @@ window.fetch = async function(resource, config) {
                 if (config?.method === 'POST') {
                     return new Response(JSON.stringify({ success: true }));
                 }
-                const { data } = await supabase.from('Vehicle').select('*, MaintenanceLog(*)').eq('farmId', farmId).eq('isDeleted', false);
+                const { data } = await supabaseClient.from('Vehicle').select('*, MaintenanceLog(*)').eq('farmId', farmId).eq('isDeleted', false);
                 return new Response(JSON.stringify({
                     vehicles: data?.map(v => ({
                         ...v,
@@ -116,12 +116,12 @@ window.fetch = async function(resource, config) {
                 }
 
                 if (type === 'get_auth' || type === 'auth_list') {
-                    const { data } = await supabase.from('User').select('email');
+                    const { data } = await supabaseClient.from('User').select('email');
                     return new Response(JSON.stringify({ emails: data?.map(u => u.email) }));
                 }
 
                 if (type === 'breaks') {
-                    const { data } = await supabase.from('Break').select('*').eq('farmId', farmId);
+                    const { data } = await supabaseClient.from('Break').select('*').eq('farmId', farmId);
                     return new Response(JSON.stringify({
                         breaks: data?.map(b => ({
                             ...b,
@@ -134,11 +134,11 @@ window.fetch = async function(resource, config) {
 
                 if (type === 'hs_get_all') {
                     const [incidents, observations, staff, hazards, meetings] = await Promise.all([
-                        supabase.from('HS_Incident').select('*').eq('farmId', farmId),
-                        supabase.from('HS_Observation').select('*').eq('farmId', farmId),
-                        supabase.from('HS_Staff').select('*').eq('farmId', farmId),
-                        supabase.from('HS_Hazard').select('*').eq('farmId', farmId),
-                        supabase.from('HS_Meeting').select('*').eq('farmId', farmId)
+                        supabaseClient.from('HS_Incident').select('*').eq('farmId', farmId),
+                        supabaseClient.from('HS_Observation').select('*').eq('farmId', farmId),
+                        supabaseClient.from('HS_Staff').select('*').eq('farmId', farmId),
+                        supabaseClient.from('HS_Hazard').select('*').eq('farmId', farmId),
+                        supabaseClient.from('HS_Meeting').select('*').eq('farmId', farmId)
                     ]);
                     
                     return new Response(JSON.stringify({
