@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>\n    <script>window.onerror = function(msg, url, line, col, error) { alert(\'Error: \' + msg + \'\\nLine: \' + line + \'\\nCol: \' + col + \'\\nStack: \' + (error?error.stack:\'\')); }; const origErr = console.error; console.error = function(...args) { alert(\'Console Error:\\n\' + args.map(a => typeof a === \'object\' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a).join(\' \')); origErr.apply(console, args); }; window.addEventListener(\'unhandledrejection\', function(e) { alert(\'Unhandled Promise Rejection: \' + (e.reason?e.reason.stack:e.reason)); });</script>
+<head>
+    <script>window.onerror = function(msg, url, line, col, error) { alert('Error: ' + msg + '\nLine: ' + line + '\nCol: ' + col + '\nStack: ' + (error?error.stack:'')); }; const origErr = console.error; console.error = function(...args) { alert('Console Error:\n' + args.map(a => typeof a === 'object' ? JSON.stringify(a, Object.getOwnPropertyNames(a)) : a).join(' ')); origErr.apply(console, args); }; window.addEventListener('unhandledrejection', function(e) { alert('Unhandled Promise Rejection: ' + (e.reason?e.reason.stack:e.reason)); });</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2ecc71">
@@ -82,6 +83,49 @@
             font-weight: bold;
             font-size: 11px;
             transition: all 0.2s ease;
+        }
+
+        #add-farmwalk-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 99999;
+            background: #f4f6f7;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
+            padding: 15px;
+        }
+
+        .farmwalk-layout-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        @media (min-width: 900px) {
+            .farmwalk-layout-grid {
+                display: grid;
+                grid-template-columns: 500px 1fr;
+                gap: 20px;
+                align-items: start;
+            }
+            .farmwalk-map-wrapper {
+                position: sticky;
+                top: 75px;
+                height: calc(100vh - 110px) !important;
+                margin-bottom: 0 !important;
+            }
+            #add-farmwalk-map {
+                height: calc(100vh - 165px) !important;
+            }
+            #farmwalk-cards-container {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+                gap: 12px !important;
+            }
         }
 
         .farmwalk-paddock-card {
@@ -2270,7 +2314,7 @@
     </div>
 
     <!-- + FARMWALK View Panel -->
-    <div id="add-farmwalk-view" style="display:none; padding:15px; flex-grow:1; background:#f4f6f7; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+    <div id="add-farmwalk-view" style="display:none;">
         <!-- Top Sticky Header Bar with Date Picker & Save Button -->
         <div style="position:sticky; top:0; z-index:100; background:white; padding:12px 15px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div style="display:flex; align-items:center; gap:10px;">
@@ -2295,24 +2339,30 @@
         <!-- Status Banner Notification -->
         <div id="farmwalk-status-banner" style="display:none; padding:10px 15px; border-radius:6px; margin-bottom:12px; font-size:13px; font-weight:bold;"></div>
 
-        <!-- Interactive Map Section -->
-        <div style="background:white; border-radius:10px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:15px;">
-            <div style="font-size:12px; font-weight:bold; color:#2c3e50; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                <span>🗺️ Select Paddock on Map (Click to Jump to Card)</span>
-                <small style="color:#7f8c8d; font-weight:normal;">Click any paddock polygon to scroll to its card</small>
+        <!-- Grid Container for Map + Cards -->
+        <div class="farmwalk-layout-grid">
+            <!-- Interactive Map Section -->
+            <div class="farmwalk-map-wrapper" style="background:white; border-radius:10px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:15px;">
+                <div style="font-size:12px; font-weight:bold; color:#2c3e50; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>🗺️ Select Paddock on Map (Click to Jump)</span>
+                    <small style="color:#7f8c8d; font-weight:normal;">Click any paddock polygon to scroll to its card</small>
+                </div>
+                <div id="add-farmwalk-map" style="height:320px; width:100%; border-radius:8px; border:1px solid #e2e8f0; z-index:1;"></div>
             </div>
-            <div id="add-farmwalk-map" style="height:320px; width:100%; border-radius:8px; border:1px solid #e2e8f0; z-index:1;"></div>
-        </div>
 
-        <!-- Filter/Search Bar -->
-        <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
-            <input type="text" id="farmwalk-card-search" placeholder="🔍 Search paddock by name..." oninput="filterFarmwalkCards()" style="flex:1; padding:9px 12px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            <span id="farmwalk-card-count" style="font-size:12px; font-weight:bold; color:#718096; white-space:nowrap;">-- paddocks</span>
-        </div>
+            <!-- Cards Column -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <!-- Filter/Search Bar -->
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="text" id="farmwalk-card-search" placeholder="🔍 Search paddock by name..." oninput="filterFarmwalkCards()" style="flex:1; padding:9px 12px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <span id="farmwalk-card-count" style="font-size:12px; font-weight:bold; color:#718096; white-space:nowrap;">-- paddocks</span>
+                </div>
 
-        <!-- Paddock Cards Container -->
-        <div id="farmwalk-cards-container" style="display:flex; flex-direction:column; gap:10px; padding-bottom:30px;">
-            <!-- Paddock cards rendered dynamically -->
+                <!-- Paddock Cards Container -->
+                <div id="farmwalk-cards-container" style="display:flex; flex-direction:column; gap:10px; padding-bottom:40px;">
+                    <!-- Paddock cards rendered dynamically -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -3272,10 +3322,13 @@
                 }).addTo(addFarmwalkMap);
             }
 
-            setTimeout(() => {
-                if (addFarmwalkMap) addFarmwalkMap.invalidateSize();
-                renderAddFarmwalkMapAndCards();
-            }, 100);
+            renderAddFarmwalkMapAndCards();
+
+            [100, 300, 600].forEach(delay => {
+                setTimeout(() => {
+                    if (addFarmwalkMap) addFarmwalkMap.invalidateSize();
+                }, delay);
+            });
         }
 
         function renderAddFarmwalkMapAndCards() {
