@@ -3385,8 +3385,8 @@
 
                 let prevCover = null;
                 let prevDateStr = '';
-                if (paddockHistory && paddockHistory[pName] && paddockHistory[pName].length > 0) {
-                    const latest = paddockHistory[pName][0];
+                if (typeof satelliteHistory !== 'undefined' && satelliteHistory && satelliteHistory[pName] && satelliteHistory[pName].length > 0) {
+                    const latest = satelliteHistory[pName][0];
                     prevCover = latest.cover;
                     if (latest.date) {
                         const d = new Date(latest.date);
