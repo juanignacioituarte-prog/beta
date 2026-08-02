@@ -135,39 +135,43 @@ window.fetch = async function(resource, config) {
 
                     if (body.type === 'breaks' && Array.isArray(body.breaks)) {
                         try {
+                            const { data: paddockRows } = await supabaseClient.from('Paddock').select('id, name').eq('farmId', farmId);
+                            const paddockMap = new Map();
+                            (paddockRows || []).forEach(p => paddockMap.set(String(p.name).toLowerCase().trim(), p.id));
+                            const fallbackPaddockId = paddockRows && paddockRows.length > 0 ? paddockRows[0].id : '3988edce-766b-4fb7-953a-868f9bedacd1';
+
                             const rowsToUpsert = body.breaks.map(b => {
                                 let points = b.vertices || [];
                                 if (!Array.isArray(points) && points && typeof points === 'object') {
                                     points = points.points || points.vertices || [];
                                 }
-                                const metaPayload = {
-                                    points: points,
-                                    areaSqm: b.areaSqm,
-                                    timeStayHrs: b.timeStayHrs,
-                                    shiftType: b.shiftType,
-                                    manualResidual: b.manualResidual,
-                                    cropWidthMeters: b.cropWidthMeters,
-                                    group: b.group,
-                                    comment: b.comment,
-                                    isCropBreak: b.isCropBreak,
-                                    cropStatus: b.cropStatus,
-                                    lastEditedAt: b.lastEditedAt,
-                                    lastEditedBy: b.lastEditedBy,
-                                    deletedBy: b.deletedBy
-                                };
+                                const paddockName = String(b.paddock || '').toLowerCase().trim();
+                                const matchedPaddockId = paddockMap.get(paddockName) || fallbackPaddockId;
+
                                 return {
                                     id: String(b.id),
                                     farmId: farmId,
+                                    paddockId: matchedPaddockId,
                                     name: b.name || '',
-                                    vertices: JSON.stringify(metaPayload),
+                                    paddock: b.paddock || '',
+                                    vertices: JSON.stringify(points),
+                                    areaSqm: b.areaSqm || (b.areaHa ? Math.round(b.areaHa * 10000) : 0),
                                     areaHa: b.areaHa || (b.areaSqm ? b.areaSqm / 10000 : 0),
                                     distanceMeters: b.distanceMeters || 0,
+                                    cropWidthMeters: b.cropWidthMeters || 0,
                                     cropMode: b.cropMode || 'polygon',
+                                    group: b.group || '1st',
+                                    comment: b.comment || '',
                                     isCropBreak: !!b.isCropBreak,
+                                    cropStatus: b.cropStatus || 'marked',
                                     status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
                                     createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
                                     createdBy: b.createdBy || 'Unknown',
-                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null
+                                    isDeleted: !!(b.isDeleted || b.deletedAt),
+                                    deletedBy: b.deletedBy || null,
+                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null,
+                                    lastEditedBy: b.lastEditedBy || null,
+                                    lastEditedAt: b.lastEditedAt ? new Date(b.lastEditedAt).toISOString() : null
                                 };
                             });
                             await supabaseClient.from('Break').upsert(rowsToUpsert, { onConflict: 'id' });
