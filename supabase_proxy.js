@@ -150,12 +150,50 @@ window.fetch = async function(resource, config) {
                         supabaseClient.from('HS_Meeting').select('*').eq('farmId', farmId)
                     ]);
                     
+                    const formatIncidents = arr => (arr || []).map(i => {
+                        let type='Incident', severity='Low', reporter='Unknown', treatment='', desc=i.description||'';
+                        const tM=desc.match(/Type:\s*(.*?)[,\)]/i); if(tM) type=tM[1].trim();
+                        const sM=desc.match(/Severity:\s*(.*?)[,\)]/i); if(sM) severity=sM[1].trim();
+                        const rM=desc.match(/Reported by:\s*(.*?)[,\)]/i); if(rM) reporter=rM[1].trim();
+                        const trM=desc.match(/Action Taken:\s*(.*?)[,\)]/i); if(trM) treatment=trM[1].trim();
+                        const mdM=desc.match(/^(.*?)\s*\(/); if(mdM) desc=mdM[1].trim();
+                        const d=i.date?new Date(i.date):new Date();
+                        return { id: i.id, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`, type, severity, reporter, treatment, description: desc, status: i.status };
+                    });
+
+                    const formatHazards = arr => (arr || []).map(h => {
+                        let type='point', severity='Medium', desc=h.description||'';
+                        const tM=desc.match(/Type:\s*(.*?)[,\)]/i); if(tM) type=tM[1].trim();
+                        const sM=desc.match(/Severity:\s*(.*?)[,\)]/i); if(sM) severity=sM[1].trim();
+                        const mdM=desc.match(/^(.*?)\s*\(/); if(mdM) desc=mdM[1].trim();
+                        let name=desc; const dIdx=desc.indexOf('-'); if(dIdx>0){ name=desc.substring(0,dIdx).trim(); desc=desc.substring(dIdx+1).trim(); }
+                        let lat=0, lng=0, polygon=[];
+                        try{ const p=JSON.parse(h.coordinates); if(Array.isArray(p)){ polygon=p; if(p.length>0){lat=p[0].lat;lng=p[0].lng;} }else{ lat=p.lat;lng=p.lng; } }catch(e){}
+                        return { id: h.id, name, severity, type, description: desc, reportedBy: h.reportedBy||'Unknown', reportedAt: h.date, status: h.status, mitigation: h.mitigation||'', lat, lng, polygon };
+                    });
+
+                    const formatObs = arr => (arr || []).map(o => {
+                        let observed='Unknown', type='Observation', details=o.description||'', action='';
+                        const oM=o.description?.match(/Observed:\s*(.*?)\./i); if(oM) observed=oM[1].trim();
+                        const tM=o.description?.match(/Type:\s*(.*?)\./i); if(tM) type=tM[1].trim();
+                        const dM=o.description?.match(/Details:\s*(.*?)\./i); if(dM) details=dM[1].trim();
+                        const aM=o.description?.match(/Action:\s*(.*?)$/i); if(aM) action=aM[1].trim();
+                        const d=o.date?new Date(o.date):new Date();
+                        return { id: o.id, date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`, time: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`, observer: o.observer||'Unknown', observed, type, details, action };
+                    });
+
+                    const formatMeetings = arr => (arr || []).map(m => {
+                        let topic=m.topic||'Safety Meeting', notes='';
+                        const nM=m.topic?.match(/Notes:\s*(.*)/i); if(nM){ notes=nM[1].trim(); topic=m.topic.substring(0,m.topic.indexOf('Notes:')).replace('-','').trim(); }
+                        return { id: m.id, date: m.date, topic, notes, attendees: (m.attendees && typeof m.attendees === 'string') ? m.attendees.split(',').map(s=>s.trim()).filter(s=>s) : [] };
+                    });
+
                     return new Response(JSON.stringify({
-                        incidents: incidents.data?.map(i => ({ ...i, date: i.date ? new Date(i.date).toISOString() : null })) || [],
-                        observations: observations.data?.map(o => ({ ...o, date: o.date ? new Date(o.date).toISOString() : null })) || [],
-                        interactions: observations.data?.map(o => ({ ...o, date: o.date ? new Date(o.date).toISOString() : null })) || [],
-                        hazards: hazards.data?.map(h => ({ ...h, date: h.date ? new Date(h.date).toISOString() : undefined })) || [],
-                        meetings: meetings.data?.map(m => ({ ...m, date: m.date ? new Date(m.date).toISOString() : undefined })) || [],
+                        incidents: formatIncidents(incidents.data),
+                        observations: formatObs(observations.data),
+                        interactions: formatObs(observations.data),
+                        hazards: formatHazards(hazards.data),
+                        meetings: formatMeetings(meetings.data),
                         staff: staff.data || []
                     }));
                 }
