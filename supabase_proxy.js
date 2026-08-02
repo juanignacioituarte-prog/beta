@@ -124,33 +124,33 @@ window.fetch = async function(resource, config) {
                     if (body.type === 'breaks' && Array.isArray(body.breaks)) {
                         try {
                             const rowsToUpsert = body.breaks.map(b => {
-                                const metaPayload = {
-                                    points: b.vertices || [],
-                                    areaSqm: b.areaSqm,
-                                    timeStayHrs: b.timeStayHrs,
-                                    shiftType: b.shiftType,
-                                    manualResidual: b.manualResidual,
-                                    cropWidthMeters: b.cropWidthMeters,
-                                    group: b.group,
-                                    cropStatus: b.cropStatus,
-                                    isCropBreak: b.isCropBreak,
-                                    lastEditedAt: b.lastEditedAt,
-                                    lastEditedBy: b.lastEditedBy,
-                                    deletedBy: b.deletedBy
-                                };
+                                let points = b.vertices || [];
+                                if (!Array.isArray(points) && points && typeof points === 'object') {
+                                    points = points.points || points.vertices || [];
+                                }
                                 return {
-                                    id: b.id,
+                                    id: String(b.id),
                                     farmId: farmId,
                                     name: b.name || '',
-                                    vertices: JSON.stringify(metaPayload),
+                                    paddock: b.paddock || '',
+                                    vertices: JSON.stringify(points),
+                                    areaSqm: b.areaSqm || (b.areaHa ? Math.round(b.areaHa * 10000) : 0),
                                     areaHa: b.areaHa || (b.areaSqm ? b.areaSqm / 10000 : 0),
                                     distanceMeters: b.distanceMeters || 0,
-                                    cropMode: b.cropMode || null,
-                                    isCropBreak: !!b.isCropBreak,
-                                    status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
+                                    cropWidthMeters: b.cropWidthMeters || 0,
+                                    cropMode: b.cropMode || 'polygon',
                                     createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : new Date().toISOString(),
                                     createdBy: b.createdBy || 'Unknown',
-                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null
+                                    group: b.group || '1st',
+                                    comment: b.comment || '',
+                                    isCropBreak: !!b.isCropBreak,
+                                    cropStatus: b.cropStatus || 'marked',
+                                    status: b.cropStatus || (b.isDeleted ? 'deleted' : 'active'),
+                                    isDeleted: !!(b.isDeleted || b.deletedAt),
+                                    deletedBy: b.deletedBy || null,
+                                    deletedAt: (b.isDeleted || b.deletedAt) ? new Date(b.deletedAt || Date.now()).toISOString() : null,
+                                    lastEditedBy: b.lastEditedBy || null,
+                                    lastEditedAt: b.lastEditedAt ? new Date(b.lastEditedAt).toISOString() : null
                                 };
                             });
                             await supabaseClient.from('Break').upsert(rowsToUpsert, { onConflict: 'id' });
@@ -193,21 +193,26 @@ window.fetch = async function(resource, config) {
                             return {
                                 ...extraMeta,
                                 ...b,
+                                id: String(b.id),
+                                name: b.name || extraMeta.name || '',
+                                paddock: b.paddock || extraMeta.paddock || '',
                                 vertices: parsedVertices,
                                 areaSqm: b.areaSqm || extraMeta.areaSqm || (b.areaHa ? Math.round(b.areaHa * 10000) : 0),
                                 areaHa: b.areaHa || extraMeta.areaHa || 0,
-                                timeStayHrs: b.timeStayHrs || extraMeta.timeStayHrs || 24,
-                                shiftType: b.shiftType || extraMeta.shiftType || '24',
-                                manualResidual: b.manualResidual || extraMeta.manualResidual || 0,
                                 distanceMeters: b.distanceMeters || extraMeta.distanceMeters || 0,
                                 cropWidthMeters: b.cropWidthMeters || extraMeta.cropWidthMeters || 0,
                                 cropMode: b.cropMode || extraMeta.cropMode || 'polygon',
-                                cropStatus: b.status || b.cropStatus || extraMeta.cropStatus || 'marked',
-                                isCropBreak: b.isCropBreak !== undefined ? b.isCropBreak : (extraMeta.isCropBreak !== undefined ? extraMeta.isCropBreak : false),
-                                group: b.group || extraMeta.group || '1st',
+                                createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : extraMeta.createdAt,
                                 createdBy: b.createdBy || extraMeta.createdBy || 'Unknown User',
-                                createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
-                                deletedAt: b.deletedAt ? new Date(b.deletedAt).toISOString() : null
+                                group: b.group || extraMeta.group || '1st',
+                                comment: b.comment || extraMeta.comment || '',
+                                isCropBreak: b.isCropBreak !== undefined ? b.isCropBreak : (extraMeta.isCropBreak !== undefined ? extraMeta.isCropBreak : false),
+                                cropStatus: b.cropStatus || b.status || extraMeta.cropStatus || 'marked',
+                                isDeleted: b.isDeleted !== undefined ? b.isDeleted : (b.deletedAt ? true : (extraMeta.isDeleted || false)),
+                                deletedBy: b.deletedBy || extraMeta.deletedBy || null,
+                                deletedAt: b.deletedAt ? new Date(b.deletedAt).toISOString() : extraMeta.deletedAt,
+                                lastEditedBy: b.lastEditedBy || extraMeta.lastEditedBy || null,
+                                lastEditedAt: b.lastEditedAt ? new Date(b.lastEditedAt).toISOString() : extraMeta.lastEditedAt
                             };
                         })
                     }));
