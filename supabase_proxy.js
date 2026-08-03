@@ -120,12 +120,12 @@ window.fetch = async function(resource, config) {
                     return new Response(JSON.stringify({ status: 'success', success: true }));
                 }
 
-                const { data } = await supabaseClient.from('ManualMode').select('*').eq('farmId', farmId);
-                let csv = '';
-                if (data && data.length > 0) {
-                    csv = data[0].data;
-                }
-                return new Response(csv);
+                const { data } = await supabaseClient.from('PastureRecord')
+                    .select('date, cover, Paddock!inner(name, farmId)')
+                    .eq('type', 'MANUAL')
+                    .eq('Paddock.farmId', farmId);
+                
+                return new Response(JSON.stringify(data || []));
             }
 
             if (path.includes('/api/supabase/feed')) {
