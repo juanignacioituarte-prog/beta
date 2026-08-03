@@ -1766,19 +1766,10 @@
                     </div>
                 </div>
                 <div class="sync-note">Synchronized on <span id="sync-time">...</span></div>
-                <div id="farmwalk-header-actions" style="margin-top:10px;">
-                    <div style="background:white; padding:12px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:10px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div style="display:flex; align-items:center; gap:6px; background:#edf2f7; padding:4px 8px; border-radius:6px;">
-                                <label for="farmwalk-date-picker" style="font-size:11px; font-weight:bold; color:#4a5568;">Date:</label>
-                                <input type="date" id="farmwalk-date-picker" style="border:1px solid #cbd5e0; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#2d3748; background:white;">
-                            </div>
-                            <button id="btn-save-farmwalk-db" onclick="saveFarmwalkToDatabase()" style="background:#27ae60; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 2px 5px rgba(39,174,96,0.3); transition:all 0.2s;">
-                                💾 Save
-                            </button>
-                        </div>
-                        <div id="farmwalk-status-banner" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; font-weight:bold;"></div>
-                    </div>
+                <div id="farmwalk-header-actions" style="display:none; margin-top:10px;">
+                    <button onclick="openAddFarmwalk()" style="width:100%; background:var(--accent); color:white; border:none; padding:12px; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer; box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+                        <span style="font-size:16px; margin-right:5px;">+</span> Add Farmwalk Data
+                    </button>
                 </div>
             </div>
 
@@ -2363,6 +2354,7 @@
 
         <!-- Status Banner Notification -->
         <div id="farmwalk-status-banner" style="display:none; padding:10px 15px; border-radius:6px; margin-top:12px; font-size:13px; font-weight:bold;"></div>
+        <div id="farmwalk-input-list" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
@@ -2845,6 +2837,7 @@
                         });
 
                         Object.keys(paddockMap).forEach(pName => {
+                            if (!isNaN(pName.trim()) && pName.trim() !== '') return;
                             if (!manualModeData.find(m => m.name === pName)) {
                                 manualModeData.push({
                                     name: pName, latest: { cover: 0, formattedDate: "--" },
@@ -3258,8 +3251,49 @@
             } catch (e) { }
         }
 
+        /* === + FARMWALK ENTRY VIEW LOGIC === */
+        function openAddFarmwalk() {
+            document.getElementById('add-farmwalk-view').style.display = 'block';
+            
+            // Set default date to today
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('farmwalk-date-picker').value = `${yyyy}-${mm}-${dd}`;
+
+            const listEl = document.getElementById('farmwalk-input-list');
+            listEl.innerHTML = '';
+            
+            const data = getCurrentModeData();
+            // Sort: in rotation first, out of rotation last. Then alphabetical.
+            const sorted = [...data].sort((a, b) => {
+                if (a.isOut !== b.isOut) return a.isOut ? 1 : -1;
+                return a.name.localeCompare(b.name);
+            });
+
+            sorted.forEach(p => {
+                if (p.isOut) return; // Don't prompt for out of rotation paddocks
+                
+                const pId = String(p.name).replace(/[^a-zA-Z0-9_-]/g, '_');
+                const div = document.createElement('div');
+                div.style.cssText = "background:white; padding:15px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;";
+                div.innerHTML = `
+                    <div>
+                        <b style="font-size:16px;">${p.name}</b><br>
+                        <small style="color:#7f8c8d;">Prev: ${p.latest.cover} (${p.latest.formattedDate})</small>
+                    </div>
+                    <div>
+                        <input type="number" id="inp-fw-cover-${pId}" style="width:100px; padding:10px; border:2px solid #3498db; border-radius:8px; font-size:16px; font-weight:bold; text-align:center;" placeholder="Cover" min="0">
+                    </div>
+                `;
+                listEl.appendChild(div);
+            });
+        }
+
         /* Dashboard Mode Switching */
         function switchDashboardMode(mode) {
+            document.getElementById('add-farmwalk-view').style.display = 'none';
             if (isDrawingBreak) cancelBreak();
             breakSelectMode = false;
             selectedBreakIds.clear();
@@ -3992,36 +4026,30 @@
                 
                 if (currentDashboardMode === 'manual') {
                     div.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:8px">
-                            <b>${p.name} ${badges}</b>
-                            <span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:3px">${p.area.toFixed(1)} ha</span>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px"><b>${p.name} ${badges}</b><span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:3px">${p.area.toFixed(1)} ha</span></div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
+                            <div><span class="label">Latest Cover</span><span class="val" style="color:${p.isOut ? 'var(--out)' : (p.isPartial ? 'var(--partial)' : 'var(--accent)')}">${p.latest.cover}<span class="unit">kgDM/ha</span></span><br><small style="color:#95a5a6">${p.latest.formattedDate}</small></div>
+                            ${p.previous ? `<div><span class="label">Previous</span><span class="val prev">${p.previous.cover}</span><br><small style="color:#95a5a6">${p.previous.formattedDate}</small></div>` : '<div></div>'}
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:10px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:12px; color:#555;">Prev: <b>${p.latest.cover}</b> <span style="font-size:10px;">(${p.latest.formattedDate})</span></span>
-                                <div style="display:flex; align-items:center; gap:6px;" onclick="event.stopPropagation()">
-                                    <label style="font-size:12px; font-weight:bold;">Cover:</label>
-                                    <input type="number" id="inp-fw-cover-${pId}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px; font-weight:bold;" placeholder="kgDM/ha" min="0">
-                                </div>
-                            </div>
-                            <div id="rotation-box-${pId}" onclick="event.stopPropagation()">
-                                ${p.isOut ? `
-                                    <button type="button" onclick="togglePaddockRotation('${pId}', '${p.name}', false)" style="width:100%; background:#27ae60; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">
-                                        🔄 Return to Rotation
-                                    </button>
-                                ` : `
-                                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#c0392b; font-weight:bold; font-size:12px; background:#fff5f5; padding:8px; border-radius:6px; border:1px solid #feb2b2; margin:0;">
-                                        <input type="checkbox" id="chk-fw-out-${pId}" onchange="onPaddockRotationCheckChange('${pId}', '${p.name}')">
-                                        <span>🚫 Put Paddock Out of Rotation</span>
-                                    </label>
-                                `}
-                            </div>
+                        ${(p.growthRate && !p.isOut) ? `<div style="position:absolute; top:14px; right:60px; text-align:right"><span style="color:var(--growth); font-weight:bold">${p.growthRate > 0 ? '+' : ''}${p.growthRate}</span><br><small style="font-size:9px; color:#95a5a6">kg/day</small></div>` : ''}
+                        
+                        <div id="rotation-box-${pId}" onclick="event.stopPropagation()" style="margin-top:10px;">
+                            ${p.isOut ? `
+                                <button type="button" onclick="togglePaddockRotation('${pId}', '${p.name}', false)" style="width:100%; background:#27ae60; color:white; border:none; padding:6px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">
+                                    🔄 Return to Rotation
+                                </button>
+                            ` : `
+                                <label style="display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer; color:#c0392b; font-weight:bold; font-size:12px; background:#fff5f5; padding:6px; border-radius:6px; border:1px solid #feb2b2; margin:0;">
+                                    <input type="checkbox" id="chk-fw-out-${pId}" onchange="onPaddockRotationCheckChange('${pId}', '${p.name}')">
+                                    <span>🚫 Put Out of Rotation</span>
+                                </label>
+                            `}
                         </div>
                     `;
                 } else {
                     div.innerHTML = `
                         <div style="display:flex; justify-content:space-between; margin-bottom:8px"><b>${p.name} ${badges}</b><span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:3px">${p.area.toFixed(1)} ha</span></div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gaap:10px">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px">
                             <div><span class="label">Latest Cover</span><span class="val" style="color:${p.isOut ? 'var(--out)' : (p.isPartial ? 'var(--partial)' : 'var(--accent)')}">${p.latest.cover}<span class="unit">kgDM/ha</span></span><br><small style="color:#95a5a6">${p.latest.formattedDate}</small>${manualHtml}</div>
                             ${p.previous ? `<div><span class="label">Previous</span><span class="val prev">${p.previous.cover}</span><br><small style="color:#95a5a6">${p.previous.formattedDate}</small></div>` : '<div></div>'}
                         </div>
