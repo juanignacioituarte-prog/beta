@@ -2796,7 +2796,9 @@
                         const prevDate = parseStrangeDate(rows[0][2]);
                         const dayDiff = (latestDate && prevDate) ? Math.max(1, (latestDate - prevDate) / 86400000) : 1;
 
-                        manualModeData = rows.slice(1).map(r => {
+                        manualModeData = rows.slice(1)
+                            .filter(r => !!areaLookup[(r[0] || "").trim()])
+                            .map(r => {
                             const name = (r[0] || "").trim();
                             const norm = normName(name);
                             let latestCover = safeNum(r[1]);
@@ -3867,7 +3869,9 @@
 
         function processSatelliteData() {
             let globalLatestDate = "";
-            satellitePaddockData = Object.keys(satelliteHistory).map(name => {
+            satellitePaddockData = Object.keys(satelliteHistory)
+                .filter(name => !!areaLookup[name])
+                .map(name => {
                 const sorted = satelliteHistory[name]; const latest = sorted[0];
                 const previous = sorted.find(s => s.dateObj < latest.dateObj) || null;
                 const area = areaLookup[name] || 0; const lowerName = name.toLowerCase();
