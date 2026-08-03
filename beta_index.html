@@ -2329,10 +2329,10 @@
         </div>
     </div>
 
-    <!-- + FARMWALK View Panel -->
-    <div id="add-farmwalk-view" style="display:none;">
+    <!-- + FARMWALK View Panel (Header Only, Map & List handled by main system) -->
+    <div id="add-farmwalk-view" style="display:none; margin-bottom: 10px;">
         <!-- Top Sticky Header Bar with Date Picker & Save Button -->
-        <div style="position:sticky; top:0; z-index:100; background:white; padding:12px 15px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="position:sticky; top:0; z-index:100; background:white; padding:12px 15px; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <h3 style="margin:0; color:#2c3e50; font-size:17px; display:flex; align-items:center; gap:6px;">
                     <span style="color:#27ae60;">📊</span> + Farmwalk
@@ -2353,33 +2353,7 @@
         </div>
 
         <!-- Status Banner Notification -->
-        <div id="farmwalk-status-banner" style="display:none; padding:10px 15px; border-radius:6px; margin-bottom:12px; font-size:13px; font-weight:bold;"></div>
-
-        <!-- Grid Container for Map + Cards -->
-        <div class="farmwalk-layout-grid">
-            <!-- Interactive Map Section -->
-            <div class="farmwalk-map-wrapper" style="background:white; border-radius:10px; padding:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:15px;">
-                <div style="font-size:12px; font-weight:bold; color:#2c3e50; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <span>🗺️ Select Paddock on Map (Click to Jump)</span>
-                    <small style="color:#7f8c8d; font-weight:normal;">Click any paddock polygon to scroll to its card</small>
-                </div>
-                <div id="add-farmwalk-map" style="height:320px; width:100%; border-radius:8px; border:1px solid #e2e8f0; z-index:1;"></div>
-            </div>
-
-            <!-- Cards Column -->
-            <div style="display:flex; flex-direction:column; gap:12px;">
-                <!-- Filter/Search Bar -->
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <input type="text" id="farmwalk-card-search" placeholder="🔍 Search paddock by name..." oninput="filterFarmwalkCards()" style="flex:1; padding:9px 12px; border:1px solid #cbd5e0; border-radius:6px; font-size:13px; background:white; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <span id="farmwalk-card-count" style="font-size:12px; font-weight:bold; color:#718096; white-space:nowrap;">-- paddocks</span>
-                </div>
-
-                <!-- Paddock Cards Container -->
-                <div id="farmwalk-cards-container" style="display:flex; flex-direction:column; gap:10px; padding-bottom:40px;">
-                    <!-- Paddock cards rendered dynamically -->
-                </div>
-            </div>
-        </div>
+        <div id="farmwalk-status-banner" style="display:none; padding:10px 15px; border-radius:6px; margin-top:12px; font-size:13px; font-weight:bold;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"></script>
@@ -3317,179 +3291,16 @@
             }
 
             if (mode === 'add_farmwalk') {
-                document.getElementById('map').style.display = 'none';
-                document.getElementById('list').style.display = 'none';
-                initAddFarmwalkView();
+                document.getElementById('map').style.display = 'block';
+                document.getElementById('list').style.display = 'block';
+                if (typeof processSatelliteData === 'function') {
+                    processSatelliteData();
+                }
                 return;
             }
 
         /* === + FARMWALK ENTRY VIEW LOGIC === */
-        let addFarmwalkMap = null;
-        let addFarmwalkMapLayers = new Map();
 
-        function initAddFarmwalkView() {
-            const datePicker = document.getElementById('farmwalk-date-picker');
-            if (datePicker && !datePicker.value) {
-                datePicker.value = new Date().toISOString().split('T')[0];
-            }
-
-            if (!addFarmwalkMap) {
-                addFarmwalkMap = L.map('add-farmwalk-map', { zoomControl: true });
-                L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-                    maxZoom: 20
-                }).addTo(addFarmwalkMap);
-            }
-
-            renderAddFarmwalkMapAndCards();
-
-            [100, 300, 600].forEach(delay => {
-                setTimeout(() => {
-                    if (addFarmwalkMap) addFarmwalkMap.invalidateSize();
-                }, delay);
-            });
-        }
-
-        async function renderAddFarmwalkMapAndCards() {
-            try {
-            const container = document.getElementById('farmwalk-cards-container');
-            if (container) container.innerHTML = '<h3 style="color:blue; padding:20px;">DEBUG: renderAddFarmwalkMapAndCards STARTED</h3>';
-            
-            if (!paddocksData || !paddocksData.features) {
-                try {
-                    if (container) container.innerHTML += '<p>Fetching GeoJSON...</p>';
-                    const res = await fetch(GEOJSON_URL + "&t=" + Date.now());
-                    paddocksData = await res.json();
-                } catch(e) {
-                    if (container) container.innerHTML += '<p style="color:red">Fetch error: ' + e.message + '</p>';
-                    console.error("Failed to load paddocks GeoJSON:", e);
-                }
-            }
-            if (!paddocksData || !paddocksData.features) {
-                if (container) container.innerHTML += '<h3 style="color:red;">Could not load paddocks data. paddocksData is ' + typeof paddocksData + '</h3>';
-                alert("Could not load paddocks data.");
-                return;
-            }
-            if (container) container.innerHTML += '<p>Data loaded. Features count: ' + (paddocksData.features ? paddocksData.features.length : 'none') + '</p>';
-
-            addFarmwalkMapLayers.forEach(l => addFarmwalkMap.removeLayer(l));
-            addFarmwalkMapLayers.clear();
-
-            // if (!container) return; // Keep debug logs visible
-            // container.innerHTML = '';
-
-            const bounds = L.latLngBounds();
-
-            const sortedFeatures = [...paddocksData.features].sort((a, b) => {
-                const nameA = String(a.properties.name || '').toLowerCase();
-                const nameB = String(b.properties.name || '').toLowerCase();
-                return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-            });
-
-            const countEl = document.getElementById('farmwalk-card-count');
-            if (countEl) countEl.innerText = `${sortedFeatures.length} paddocks`;
-
-            sortedFeatures.forEach(feature => {
-                const p = feature.properties;
-                const pName = p.name || 'Paddock';
-                const pId = String(p.id || pName).replace(/[^a-zA-Z0-9_-]/g, '_');
-
-                let prevCover = null;
-                let prevDateStr = '';
-                if (typeof satelliteHistory !== 'undefined' && satelliteHistory && satelliteHistory[pName] && satelliteHistory[pName].length > 0) {
-                    const latest = satelliteHistory[pName][0];
-                    prevCover = latest.cover;
-                    if (latest.date) {
-                        const d = new Date(latest.date);
-                        prevDateStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
-                    }
-                } else if (p.measuredCover) {
-                    prevCover = p.measuredCover;
-                }
-
-                const isExcluded = excludedPaddocks.has(pName.toLowerCase());
-
-                const card = document.createElement('div');
-                card.id = `paddock-card-${pId}`;
-                card.className = `farmwalk-paddock-card ${isExcluded ? 'excluded-card' : ''}`;
-                card.setAttribute('data-name', pName.toLowerCase());
-
-                card.innerHTML = `
-                    <div class="farmwalk-card-header">
-                        <span class="farmwalk-card-title">${pName} ${isExcluded ? '<span style="color:#e74c3c; font-size:11px; margin-left:6px;">[OUT OF ROTATION]</span>' : ''}</span>
-                        <span class="farmwalk-card-area">${p.calcArea ? p.calcArea.toFixed(1) + ' ha' : ''}</span>
-                    </div>
-                    <div class="farmwalk-prev-cover-box">
-                        <span>Previous Cover: <strong>${prevCover !== null && prevCover !== undefined ? prevCover : 'No reading'}</strong> kgDM/ha</span>
-                        ${prevDateStr ? `<small style="display:block; color:#718096; margin-top:2px;">Measured on ${prevDateStr}</small>` : ''}
-                    </div>
-                    <div class="farmwalk-card-inputs">
-                        <div class="farmwalk-cover-input-group">
-                            <label for="inp-fw-cover-${pId}">Latest Cover (kgDM/ha):</label>
-                            <input type="number" id="inp-fw-cover-${pId}" class="fw-cover-inp" placeholder="e.g. 2100" min="0" max="6000">
-                        </div>
-                        <div id="rotation-box-${pId}">
-                            ${isExcluded ? `
-                                <button type="button" onclick="togglePaddockRotation('${pId}', '${pName}', false)" style="background:#27ae60; color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
-                                    🔄 Return to Rotation
-                                </button>
-                            ` : `
-                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#c0392b; font-weight:bold; font-size:12px; background:#fff5f5; padding:8px 10px; border-radius:6px; border:1px solid #feb2b2;">
-                                    <input type="checkbox" id="chk-fw-out-${pId}" onchange="onPaddockRotationCheckChange('${pId}', '${pName}')">
-                                    <span>🚫 Put Paddock Out of Rotation</span>
-                                </label>
-                            `}
-                        </div>
-                    </div>
-                `;
-                if (container) container.appendChild(card);
-
-                if (feature.geometry) {
-                    try {
-                        const geoLayer = L.geoJSON(feature, {
-                            style: {
-                                color: isExcluded ? '#e74c3c' : '#27ae60',
-                                weight: 2,
-                                fillColor: isExcluded ? '#e74c3c' : '#2ecc71',
-                                fillOpacity: 0.35
-                            }
-                        }).addTo(addFarmwalkMap);
-
-                        geoLayer.bindTooltip(pName, { permanent: true, direction: 'center', className: 'paddock-label' });
-
-                        geoLayer.on('click', () => {
-                            addFarmwalkMapLayers.forEach(l => {
-                                if (l.setStyle) l.setStyle({ weight: 2 });
-                            });
-                            geoLayer.setStyle({ weight: 4, color: '#f39c12', fillColor: '#f1c40f', fillOpacity: 0.6 });
-
-                            const cardEl = document.getElementById(`paddock-card-${pId}`);
-                            if (cardEl) {
-                                document.querySelectorAll('.farmwalk-paddock-card').forEach(c => c.classList.remove('highlighted-card'));
-                                cardEl.classList.add('highlighted-card');
-                                cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                        });
-
-                        const layerBounds = geoLayer.getBounds();
-                        if (layerBounds.isValid()) bounds.extend(layerBounds);
-
-                        addFarmwalkMapLayers.set(pId, geoLayer);
-                    } catch(e){}
-                }
-            });
-
-            if (bounds.isValid()) {
-                setTimeout(() => addFarmwalkMap.fitBounds(bounds, { padding: [20, 20] }), 200);
-            }
-            } catch (err) {
-                console.error("Farmwalk view error:", err);
-                const container = document.getElementById('farmwalk-cards-container');
-                if (container) {
-                    container.innerHTML += '<div style="color:red; padding:20px; font-weight:bold;">CRITICAL CRASH:<br>' + err.message + '<br>' + err.stack + '</div>';
-                }
-                alert("Farmwalk map crashed: " + err.message);
-            }
-        }
 
         function onPaddockRotationCheckChange(pId, pName) {
             const chk = document.getElementById(`chk-fw-out-${pId}`);
@@ -3526,31 +3337,18 @@
                     `;
                 }
             }
-            const geoLayer = addFarmwalkMapLayers.get(pId);
+            const geoLayer = paddockMap[pName];
             if (geoLayer) {
                 geoLayer.setStyle({
-                    color: isOut ? '#e74c3c' : '#27ae60',
-                    fillColor: isOut ? '#e74c3c' : '#2ecc71'
+                    color: 'white',
+                    weight: 1.5,
+                    fillColor: isOut ? '#e74c3c' : 'var(--accent)',
+                    fillOpacity: isOut ? 0.6 : 0.1
                 });
             }
         }
 
-        function filterFarmwalkCards() {
-            const q = (document.getElementById('farmwalk-card-search')?.value || '').toLowerCase().trim();
-            const cards = document.querySelectorAll('.farmwalk-paddock-card');
-            let visibleCount = 0;
-            cards.forEach(card => {
-                const name = card.getAttribute('data-name') || '';
-                if (name.includes(q)) {
-                    card.style.display = 'block';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-            const countEl = document.getElementById('farmwalk-card-count');
-            if (countEl) countEl.innerText = `${visibleCount} paddocks`;
-        }
+
 
         async function saveFarmwalkToDatabase() {
             const btn = document.getElementById('btn-save-farmwalk-db');
@@ -4189,14 +3987,46 @@
 
                 const manualHtml = (currentDashboardMode === 'satellite' && p.manual) ? `<div class="manual-chip ${p.mStatus ? p.mStatus.className : ''}"><span class="muted">MANUAL COVER</span> <b>${Math.round(p.manual.cover)}</b> kgDM/ha <span class="muted"> • </span>${fmtNZ(p.manual.dateObj)}</div>` : ``;
 
-                div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; margin-bottom:8px"><b>${p.name} ${badges}</b><span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:3px">${p.area.toFixed(1)} ha</span></div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gaap:10px">
-                <div><span class="label">Latest Cover</span><span class="val" style="color:${p.isOut ? 'var(--out)' : (p.isPartial ? 'var(--partial)' : 'var(--accent)')}">${p.latest.cover}<span class="unit">kgDM/ha</span></span><br><small style="color:#95a5a6">${p.latest.formattedDate}</small>${manualHtml}</div>
-                ${p.previous ? `<div><span class="label">Previous</span><span class="val prev">${p.previous.cover}</span><br><small style="color:#95a5a6">${p.previous.formattedDate}</small></div>` : '<div></div>'}
-            </div>
-            ${(p.growthRate && !p.isOut) ? `<div style="position:absolute; top:14px; right:60px; text-align:right"><span style="color:var(--growth); font-weight:bold">${p.growthRate > 0 ? '+' : ''}${p.growthRate}</span><br><small style="font-size:9px; color:#95a5a6">kg/day</small></div>` : ''}
-        `;
+                const pId = String(p.name).replace(/[^a-zA-Z0-9_-]/g, '_');
+                
+                if (currentDashboardMode === 'add_farmwalk') {
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px">
+                            <b>${p.name} ${badges}</b>
+                            <span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:3px">${p.area.toFixed(1)} ha</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-size:12px; color:#555;">Prev: <b>${p.latest.cover}</b> <span style="font-size:10px;">(${p.latest.formattedDate})</span></span>
+                                <div style="display:flex; align-items:center; gap:6px;" onclick="event.stopPropagation()">
+                                    <label style="font-size:12px; font-weight:bold;">Cover:</label>
+                                    <input type="number" id="inp-fw-cover-${pId}" style="width:80px; padding:6px; border:1px solid #ccc; border-radius:4px; font-weight:bold;" placeholder="kgDM/ha" min="0">
+                                </div>
+                            </div>
+                            <div id="rotation-box-${pId}" onclick="event.stopPropagation()">
+                                ${p.isOut ? `
+                                    <button type="button" onclick="togglePaddockRotation('${pId}', '${p.name}', false)" style="width:100%; background:#27ae60; color:white; border:none; padding:8px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer;">
+                                        🔄 Return to Rotation
+                                    </button>
+                                ` : `
+                                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer; color:#c0392b; font-weight:bold; font-size:12px; background:#fff5f5; padding:8px; border-radius:6px; border:1px solid #feb2b2; margin:0;">
+                                        <input type="checkbox" id="chk-fw-out-${pId}" onchange="onPaddockRotationCheckChange('${pId}', '${p.name}')">
+                                        <span>🚫 Put Paddock Out of Rotation</span>
+                                    </label>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px"><b>${p.name} ${badges}</b><span style="font-size:11px; background:#eee; padding:2px 5px; border-radius:3px">${p.area.toFixed(1)} ha</span></div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gaap:10px">
+                            <div><span class="label">Latest Cover</span><span class="val" style="color:${p.isOut ? 'var(--out)' : (p.isPartial ? 'var(--partial)' : 'var(--accent)')}">${p.latest.cover}<span class="unit">kgDM/ha</span></span><br><small style="color:#95a5a6">${p.latest.formattedDate}</small>${manualHtml}</div>
+                            ${p.previous ? `<div><span class="label">Previous</span><span class="val prev">${p.previous.cover}</span><br><small style="color:#95a5a6">${p.previous.formattedDate}</small></div>` : '<div></div>'}
+                        </div>
+                        ${(p.growthRate && !p.isOut) ? `<div style="position:absolute; top:14px; right:60px; text-align:right"><span style="color:var(--growth); font-weight:bold">${p.growthRate > 0 ? '+' : ''}${p.growthRate}</span><br><small style="font-size:9px; color:#95a5a6">kg/day</small></div>` : ''}
+                    `;
+                }
 
                 div.onclick = () => {
                     document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
