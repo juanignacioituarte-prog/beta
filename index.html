@@ -1767,9 +1767,18 @@
                 </div>
                 <div class="sync-note">Synchronized on <span id="sync-time">...</span></div>
                 <div id="farmwalk-header-actions" style="margin-top:10px;">
-                    <button id="btn-add-farmwalk-entry" onclick="switchDashboardMode('add_farmwalk')" style="background:#27ae60; color:white; border:none; padding:8px 14px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 2px 5px rgba(39,174,96,0.3); width:100%; transition:all 0.2s;">
-                        ➕ + Farmwalk (Enter Pasture Covers)
-                    </button>
+                    <div style="background:white; padding:12px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:6px; background:#edf2f7; padding:4px 8px; border-radius:6px;">
+                                <label for="farmwalk-date-picker" style="font-size:11px; font-weight:bold; color:#4a5568;">Date:</label>
+                                <input type="date" id="farmwalk-date-picker" style="border:1px solid #cbd5e0; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold; color:#2d3748; background:white;">
+                            </div>
+                            <button id="btn-save-farmwalk-db" onclick="saveFarmwalkToDatabase()" style="background:#27ae60; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:bold; font-size:12px; cursor:pointer; box-shadow:0 2px 5px rgba(39,174,96,0.3); transition:all 0.2s;">
+                                💾 Save
+                            </button>
+                        </div>
+                        <div id="farmwalk-status-banner" style="display:none; padding:8px 10px; border-radius:6px; font-size:11px; font-weight:bold;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -3254,7 +3263,7 @@
             selectedBreakIds.clear();
             currentDashboardMode = mode;
             document.getElementById('btn-mode-sat').classList.toggle('active', mode === 'satellite');
-            document.getElementById('btn-mode-man').classList.toggle('active', mode === 'manual' || mode === 'add_farmwalk');
+            document.getElementById('btn-mode-man').classList.toggle('active', mode === 'manual');
             document.getElementById('btn-mode-feed').classList.toggle('active', mode === 'feed');
             document.getElementById('btn-mode-breaks').classList.toggle('active', mode === 'breaks');
 
@@ -3273,9 +3282,6 @@
             const fwHeaderActions = document.getElementById('farmwalk-header-actions');
             if (fwHeaderActions) fwHeaderActions.style.display = (mode === 'manual') ? 'block' : 'none';
 
-            const addFwView = document.getElementById('add-farmwalk-view');
-            if (addFwView) addFwView.style.display = (mode === 'add_farmwalk') ? 'block' : 'none';
-
             document.getElementById('calibration-box').style.display = (mode === 'satellite' && calibrationModel) ? 'block' : 'none';
             document.getElementById('sat-layer-controls').style.display = (mode === 'satellite' || mode === 'breaks' || mode === 'health_safety') ? 'flex' : 'none';
             document.getElementById('latest-date').style.display = (mode === 'satellite' || mode === 'breaks' || mode === 'health_safety') ? 'block' : 'none';
@@ -3288,15 +3294,6 @@
 
             if (mode !== 'health_safety' && typeof isDrawingHazard !== 'undefined' && isDrawingHazard) {
                 cancelHazardDrawing();
-            }
-
-            if (mode === 'add_farmwalk') {
-                document.getElementById('map').style.display = 'block';
-                document.getElementById('list').style.display = 'block';
-                if (typeof processSatelliteData === 'function') {
-                    processSatelliteData();
-                }
-                return;
             }
 
         /* === + FARMWALK ENTRY VIEW LOGIC === */
@@ -3989,7 +3986,7 @@
 
                 const pId = String(p.name).replace(/[^a-zA-Z0-9_-]/g, '_');
                 
-                if (currentDashboardMode === 'add_farmwalk') {
+                if (currentDashboardMode === 'manual') {
                     div.innerHTML = `
                         <div style="display:flex; justify-content:space-between; margin-bottom:8px">
                             <b>${p.name} ${badges}</b>
