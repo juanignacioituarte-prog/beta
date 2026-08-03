@@ -119,12 +119,36 @@ window.fetch = async function(resource, config) {
                     } catch(e) { console.error('Error saving manual farmwalk:', e); }
                     return new Response(JSON.stringify({ status: 'success', success: true }));
                 }
-
-                const { data } = await supabaseClient.from('ManualMode').select('*').eq('farmId', farmId);
-                let csv = '';
-                if (data && data.length > 0) {
-                    csv = data[0].data;
+                const urlObj = new URL(url);
+                const farmId = urlObj.searchParams.get('farmId');
+                
+                const { data, error } = await supabaseClient
+                    .from('ManualMode')
+                    .select('paddockName, Date, Cover')
+                    .eq('farmId', farmId);
+                    
+                if (error || !data || data.length === 0) {
+                    return new Response('');
                 }
+                
+                // Get unique dates sorted descending
+                const dates = [...new Set(data.map(d => d.Date))].sort((a,b) => {
+                    const da = new Date(a.replace(/:00:00/, ''));
+                    const db = new Date(b.replace(/:00:00/, ''));
+                    return db - da;
+                });
+                
+                let csv = '#N/A,' + dates.join(',') + '\n';
+                const pMap = {};
+                data.forEach(r => {
+                    if(!pMap[r.paddockName]) pMap[r.paddockName] = {};
+                    pMap[r.paddockName][r.Date] = r.Cover;
+                });
+                
+                for(const p in pMap) {
+                    csv += p + ',' + dates.map(d => pMap[p][d] !== undefined ? pMap[p][d] : '0').join(',') + '\n';
+                }
+                
                 return new Response(csv);
             }
 
