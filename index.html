@@ -2783,72 +2783,93 @@
         }
 
         /* Loaders */
-        async function loadManualData() {
+        async function loadManualRankCSV() {
             try {
                 const res = await fetch(MANUAL_MODE_CSV + "&t=" + Date.now());
-                const data = await res.json();
-                
-                const grouped = {};
-                if (Array.isArray(data)) {
-                    data.forEach(r => {
-                        const name = r.Paddock ? r.Paddock.name : null;
-                        if (!name) return;
-                        const dateObj = new Date(r.date);
-                        if (!grouped[name]) grouped[name] = [];
-                        grouped[name].push({ cover: r.cover, dateObj: dateObj });
-                    });
-                }
-                
-                manualModeData = [];
-                
-                Object.keys(areaLookup).forEach(name => {
-                    const norm = normName(name);
-                    const history = grouped[name] || [];
-                    history.sort((a, b) => b.dateObj - a.dateObj);
-                    
-                    let latestCover = 0, prevCover = 0;
-                    let lDate = null, pDate = null;
-                    
-                    if (history.length > 0) {
-                        lDate = history[0].dateObj;
-                        latestCover = history[0].cover || 0;
-                    }
-                    if (history.length > 1) {
-                        pDate = history[1].dateObj;
-                        prevCover = history[1].cover || 0;
-                    }
-                    
-                    const isOut = !!excludedPaddocks.get(norm);
-                    let growth = 0;
-                    if (!isOut && lDate && pDate) {
-                        const dDiff = Math.max(1, (lDate - pDate) / 86400000);
-                        growth = Math.round((latestCover - prevCover) / dDiff);
-                    }
-                    
-                    manualModeData.push({
-                        name,
-                        latest: { cover: latestCover, formattedDate: lDate ? fmtNZ(lDate) : "--", ts: lDate ? lDate.getTime() : null },
-                        previous: { cover: prevCover, formattedDate: pDate ? fmtNZ(pDate) : "--" },
-                        growthRate: growth,
-                        isOut: isOut,
-                        area: areaLookup[name] || 0
-                    });
-                });
-                
-                let tWGrowth = 0, tAreaG = 0;
-                manualModeData.forEach(p => {
-                    if (!p.isOut && p.area > 0 && p.growthRate && p.growthRate > 0) {
-                        tWGrowth += p.growthRate * p.area;
-                        tAreaG += p.area;
-                    }
-                });
-                manualFarmGrowthRate = tAreaG > 0 ? Math.round(tWGrowth / tAreaG) : 0;
+                const txt = await res.text();
+                Papa.parse(txt, {
+                    header: false,
+                    complete: (results) => {
+                        const rows = results.data || [];
+                        if (rows.length < 1) return;
+                        const latestDate = parseStrangeDate(rows[0][1]);
+                        const prevDate = parseStrangeDate(rows[0][2]);
+                        const dayDiff = (latestDate && prevDate) ? Math.max(1, (latestDate - prevDate) / 86400000) : 1;
 
-                if (currentDashboardMode === 'manual') {
-                    renderDashboard();
-                    updateGeoStyles();
-                }
-            } catch (e) { console.error('Error loading manual data', e); }
+                        manualModeData = rows.slice(1)
+                            .filter(r => !!areaLookup[(r[0] || "").trim()])
+                            .map(r => {
+                            const name = (r[0] || "").trim();
+                            const norm = normName(name);
+                            let latestCover = safeNum(r[1]);
+                            let prevCover = safeNum(r[2]);
+                            let lDate = latestDate;
+                            let pDate = prevDate;
+
+                            // Merge from calibration sheet (manualEntries) if more recent
+                            const paddockEntries = manualEntries.filter(e => e.lower === norm).sort((a, b) => b.dateObj - a.dateObj);
+                            if (paddockEntries.length > 0) {
+                                const mLatest = paddockEntries[0];
+                                if (!lDate || mLatest.dateObj > lDate) {
+                                    // Shift grid latest to previous if it was actually older
+                                    if (lDate && (!pDate || lDate > pDate)) {
+                                        pDate = lDate;
+                                        prevCover = latestCover;
+                                    }
+                                    lDate = mLatest.dateObj;
+                                    latestCover = mLatest.cover;
+                                    
+                                    // If we have a second newest entry in calibration sheet, use it as previous
+                                    if (paddockEntries.length > 1) {
+                                        const mPrev = paddockEntries[1];
+                                        if (!pDate || mPrev.dateObj > pDate) {
+                                            pDate = mPrev.dateObj;
+                                            prevCover = mPrev.cover;
+                                        }
+                                    }
+                                }
+                            }
+
+                            const isOut = (latestCover === 0);
+                            const dDiff = (lDate && pDate) ? Math.max(1, (lDate - pDate) / 86400000) : dayDiff;
+                            const growth = isOut ? 0 : Math.round((latestCover - prevCover) / dDiff);
+
+                            return {
+                                name, 
+                                latest: { cover: latestCover, formattedDate: fmtNZ(lDate), ts: lDate ? lDate.getTime() : null },
+                                previous: { cover: prevCover, formattedDate: fmtNZ(pDate) },
+                                growthRate: growth, 
+                                isOut: isOut, 
+                                area: areaLookup[name] || 0
+                            };
+                        });
+
+                        Object.keys(paddockMap).forEach(pName => {
+                            if (!manualModeData.find(m => m.name === pName)) {
+                                manualModeData.push({
+                                    name: pName, latest: { cover: 0, formattedDate: "--" },
+                                    previous: { cover: 0, formattedDate: "--" },
+                                    growthRate: 0, isOut: true, area: areaLookup[pName] || 0
+                                });
+                            }
+                        });
+                        
+                        let tWGrowth = 0, tAreaG = 0;
+                        manualModeData.forEach(p => {
+                            if (!p.isOut && p.area > 0 && p.growthRate && p.growthRate > 0) {
+                                tWGrowth += p.growthRate * p.area;
+                                tAreaG += p.area;
+                            }
+                        });
+                        manualFarmGrowthRate = tAreaG > 0 ? Math.round(tWGrowth / tAreaG) : 0;
+
+                        if (currentDashboardMode === 'manual') {
+                            renderDashboard();
+                            updateGeoStyles();
+                        }
+                    }
+                });
+            } catch (e) { }
         }
 
         async function loadManualSheet() {
@@ -3233,7 +3254,7 @@
                 }).addTo(map);
                 map.fitBounds(geoLayer.getBounds());
                 loadCSV();
-                loadManualData();
+                loadManualRankCSV();
             } catch (e) { }
         }
 
