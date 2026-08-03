@@ -3396,7 +3396,7 @@
                     prevCover = p.measuredCover;
                 }
 
-                const isExcluded = PADDOCK_EXCLUSIONS.has(pName.toLowerCase());
+                const isExcluded = excludedPaddocks.has(pName.toLowerCase());
 
                 const card = document.createElement('div');
                 card.id = `paddock-card-${pId}`;
@@ -3482,9 +3482,9 @@
 
         function togglePaddockRotation(pId, pName, isOut) {
             if (isOut) {
-                PADDOCK_EXCLUSIONS.add(pName.toLowerCase());
+                excludedPaddocks.set(pName.toLowerCase(), 'OUT');
             } else {
-                PADDOCK_EXCLUSIONS.delete(pName.toLowerCase());
+                excludedPaddocks.delete(pName.toLowerCase());
             }
             const cardEl = document.getElementById(`paddock-card-${pId}`);
             if (cardEl) {
@@ -3554,7 +3554,7 @@
 
                 const coverInput = document.getElementById(`inp-fw-cover-${pId}`);
                 const rotBox = document.getElementById(`rotation-box-${pId}`);
-                const isOut = PADDOCK_EXCLUSIONS.has(pName.toLowerCase());
+                const isOut = excludedPaddocks.has(pName.toLowerCase());
 
                 const coverVal = coverInput ? coverInput.value.trim() : '';
 
