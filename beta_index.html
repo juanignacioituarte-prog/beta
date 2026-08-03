@@ -3350,6 +3350,7 @@
         }
 
         async function renderAddFarmwalkMapAndCards() {
+            try {
             if (!paddocksData || !paddocksData.features) {
                 try {
                     const res = await fetch(GEOJSON_URL + "&t=" + Date.now());
@@ -3358,7 +3359,10 @@
                     console.error("Failed to load paddocks GeoJSON:", e);
                 }
             }
-            if (!paddocksData || !paddocksData.features) return;
+            if (!paddocksData || !paddocksData.features) {
+                alert("Could not load paddocks data.");
+                return;
+            }
 
             addFarmwalkMapLayers.forEach(l => addFarmwalkMap.removeLayer(l));
             addFarmwalkMapLayers.clear();
@@ -3470,6 +3474,10 @@
 
             if (bounds.isValid()) {
                 setTimeout(() => addFarmwalkMap.fitBounds(bounds, { padding: [20, 20] }), 200);
+            }
+            } catch (err) {
+                console.error("Farmwalk view error:", err);
+                alert("Farmwalk map crashed: " + err.message);
             }
         }
 
