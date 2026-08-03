@@ -3351,25 +3351,31 @@
 
         async function renderAddFarmwalkMapAndCards() {
             try {
+            const container = document.getElementById('farmwalk-cards-container');
+            if (container) container.innerHTML = '<h3 style="color:blue; padding:20px;">DEBUG: renderAddFarmwalkMapAndCards STARTED</h3>';
+            
             if (!paddocksData || !paddocksData.features) {
                 try {
+                    if (container) container.innerHTML += '<p>Fetching GeoJSON...</p>';
                     const res = await fetch(GEOJSON_URL + "&t=" + Date.now());
                     paddocksData = await res.json();
                 } catch(e) {
+                    if (container) container.innerHTML += '<p style="color:red">Fetch error: ' + e.message + '</p>';
                     console.error("Failed to load paddocks GeoJSON:", e);
                 }
             }
             if (!paddocksData || !paddocksData.features) {
+                if (container) container.innerHTML += '<h3 style="color:red;">Could not load paddocks data. paddocksData is ' + typeof paddocksData + '</h3>';
                 alert("Could not load paddocks data.");
                 return;
             }
+            if (container) container.innerHTML += '<p>Data loaded. Features count: ' + (paddocksData.features ? paddocksData.features.length : 'none') + '</p>';
 
             addFarmwalkMapLayers.forEach(l => addFarmwalkMap.removeLayer(l));
             addFarmwalkMapLayers.clear();
 
-            const container = document.getElementById('farmwalk-cards-container');
-            if (!container) return;
-            container.innerHTML = '';
+            // if (!container) return; // Keep debug logs visible
+            // container.innerHTML = '';
 
             const bounds = L.latLngBounds();
 
@@ -3435,7 +3441,7 @@
                         </div>
                     </div>
                 `;
-                container.appendChild(card);
+                if (container) container.appendChild(card);
 
                 if (feature.geometry) {
                     try {
@@ -3477,6 +3483,10 @@
             }
             } catch (err) {
                 console.error("Farmwalk view error:", err);
+                const container = document.getElementById('farmwalk-cards-container');
+                if (container) {
+                    container.innerHTML += '<div style="color:red; padding:20px; font-weight:bold;">CRITICAL CRASH:<br>' + err.message + '<br>' + err.stack + '</div>';
+                }
                 alert("Farmwalk map crashed: " + err.message);
             }
         }
